@@ -232,6 +232,7 @@
   .calday{aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; font-family:var(--mono); font-size:13px; color:var(--text-dim); position:relative;}
   .calday.upper{background:rgba(185,255,60,.16); color:var(--text); border:1px solid var(--accent-dim);}
   .calday.lower{background:rgba(255,194,102,.16); color:var(--text); border:1px solid var(--amber);}
+  .calday.full{background:rgba(120,190,255,.16); color:var(--text); border:1px solid #4d7fa6;}
   .calday.free{background:rgba(255,255,255,.08); color:var(--text); border:1px solid var(--line-strong);}
   .calday.double{background:linear-gradient(160deg, var(--gold), #b8862b); color:#221a05; border:1px solid var(--gold); font-weight:700;}
   .calday .star{position:absolute; top:-5px; right:-4px; font-size:12px; color:var(--gold); text-shadow:0 0 6px rgba(255,212,94,.7);}
@@ -268,6 +269,38 @@
   .navbtn .dot{position:absolute; margin-left:26px; margin-top:-2px; width:7px; height:7px; border-radius:50%; background:var(--accent); display:none;}
   .navbtn.training .dot{display:block;}
 
+  /* ---------- onboarding ---------- */
+  .onb{position:fixed; inset:0; background:var(--bg); z-index:120; display:flex; flex-direction:column; max-width:520px; margin:0 auto;}
+  .onb[hidden]{display:none;}
+  .onb-top{display:flex; align-items:center; gap:14px; padding:calc(14px + env(safe-area-inset-top)) 18px 10px;}
+  .onb-back{background:none; border:none; color:var(--text); font-size:26px; line-height:1; width:44px; height:44px; cursor:pointer; margin-left:-10px;}
+  .onb-back[disabled]{opacity:.25;}
+  .onb-track{flex:1; height:4px; background:var(--line); border-radius:4px; overflow:hidden;}
+  .onb-bar{display:block; height:100%; background:var(--accent); width:0%; transition:width .25s ease;}
+  .onb-step{font-family:var(--mono); font-size:12px; color:var(--text-faint); min-width:34px; text-align:right;}
+  .onb-body{flex:1; overflow-y:auto; padding:14px 18px 8px;}
+  .onb-q{font-family:var(--display); font-size:25px; font-weight:700; line-height:1.25; letter-spacing:-0.01em; margin-bottom:8px;}
+  .onb-hint{font-size:13.5px; color:var(--text-dim); line-height:1.55; margin-bottom:20px;}
+  .onb-opts{display:flex; flex-direction:column; gap:10px;}
+  .onb-opt{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; text-align:left; color:inherit; font-family:inherit; font-size:15px; cursor:pointer; min-height:60px; display:flex; align-items:center; justify-content:space-between; gap:12px; transition:border-color .12s, background .12s;}
+  .onb-opt small{display:block; font-size:12.5px; color:var(--text-dim); margin-top:4px; font-weight:400;}
+  .onb-opt .tick{width:22px; height:22px; border-radius:50%; border:1px solid var(--line-strong); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:transparent;}
+  .onb-opt.sel{border-color:var(--accent); background:linear-gradient(180deg, rgba(185,255,60,.09), rgba(185,255,60,.02));}
+  .onb-opt.sel .tick{background:var(--accent); border-color:var(--accent); color:#111; font-weight:700;}
+  .onb-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(88px,1fr)); gap:10px;}
+  .onb-grid .onb-opt{justify-content:center; text-align:center; min-height:64px; font-family:var(--mono); font-size:17px;}
+  .onb-input{width:100%; background:var(--bg-elev); border:1px solid var(--line-strong); border-radius:14px; color:var(--text); font-size:17px; padding:17px; font-family:inherit;}
+  .onb-input:focus{outline:none; border-color:var(--accent);}
+  .onb-foot{padding:12px 18px calc(20px + env(safe-area-inset-bottom));}
+  .onb-next{width:100%; background:var(--accent); color:#111; border:none; padding:17px; border-radius:14px; font-family:var(--display); font-weight:700; font-size:16px; cursor:pointer; min-height:56px;}
+  .onb-next[disabled]{background:var(--card-2); color:var(--text-faint); cursor:default;}
+  .onb-skip{width:100%; background:none; border:none; color:var(--text-dim); font-size:13.5px; padding:14px; cursor:pointer; font-family:inherit;}
+  .onb-resumo{display:flex; flex-direction:column; gap:1px; background:var(--line); border:1px solid var(--line); border-radius:14px; overflow:hidden; margin-bottom:16px;}
+  .onb-linha{background:var(--card); padding:13px 16px; display:flex; justify-content:space-between; gap:14px; font-size:13.5px;}
+  .onb-linha span:first-child{color:var(--text-dim);}
+  .onb-linha span:last-child{text-align:right; font-weight:600;}
+  .aviso{font-size:12.5px; color:var(--text-dim); line-height:1.55; background:var(--card-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px;}
+
   ::-webkit-scrollbar{display:none;}
 </style>
 </head>
@@ -279,7 +312,7 @@
     <div class="topbar">
       <div>
         <h1>Meu Treino</h1>
-        <div class="sub" id="home-sub">Upper Lower · 5 a 6x por semana</div>
+        <div class="sub" id="home-sub"></div>
       </div>
     </div>
     <div class="homestats" id="homestats"></div>
@@ -293,7 +326,7 @@
     </div>
     <div class="weeklabel">Treinos da semana</div>
     <div class="daylist" id="daylist"></div>
-    <div class="divider-note">Versão de 5 dias: pule o Upper C ou o Lower C. Sempre priorize manter o Lower B na semana.</div>
+    <div class="divider-note" id="home-nota"></div>
   </section>
 
   <!-- ============ SESSION ============ -->
@@ -375,6 +408,20 @@
         </div>
         <button class="switch" id="sw-wake" role="switch" aria-checked="true" aria-label="Manter a tela ligada"></button>
       </div>
+      <button class="setitem" id="btn-perfil">
+        <div>
+          <div class="t">Seu perfil</div>
+          <div class="d" id="perfil-resumo">Suas respostas sobre treino e objetivo.</div>
+        </div>
+        <span class="chev" aria-hidden="true">›</span>
+      </button>
+      <button class="setitem" id="btn-corpo">
+        <div>
+          <div class="t">Dados corporais</div>
+          <div class="d" id="corpo-resumo">Opcional. Servem para acompanhar sua evolução.</div>
+        </div>
+        <span class="chev" aria-hidden="true">›</span>
+      </button>
       <button class="setitem" id="btn-export">
         <div>
           <div class="t">Exportar backup</div>
@@ -398,8 +445,8 @@
       </button>
       <button class="setitem" id="btn-resetprog">
         <div>
-          <div class="t">Restaurar programa original</div>
-          <div class="d">Desfaz as montagens que você salvou como padrão. O histórico não é afetado.</div>
+          <div class="t">Refazer meu programa</div>
+          <div class="d">Monta os treinos de novo a partir das suas respostas. O histórico não é afetado.</div>
         </div>
         <span class="chev" aria-hidden="true">›</span>
       </button>
@@ -461,6 +508,17 @@
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- onboarding -->
+  <div class="onb" id="onboarding" hidden>
+    <div class="onb-top">
+      <button class="onb-back" id="onb-back" aria-label="Voltar">‹</button>
+      <div class="onb-track"><span class="onb-bar" id="onb-bar"></span></div>
+      <div class="onb-step" id="onb-step"></div>
+    </div>
+    <div class="onb-body" id="onb-body"></div>
+    <div class="onb-foot" id="onb-foot"></div>
+  </div>
 
   <!-- bottom nav -->
   <nav class="bottomnav" aria-label="Navegação principal">

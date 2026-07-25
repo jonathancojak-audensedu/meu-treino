@@ -38,7 +38,7 @@ const EX = {
   triceps_testa:      {name:'Tríceps testa', type:'reps', group:'tríceps', alts:['triceps_corda']},
   triceps_mergulho:   {name:'Mergulho no banco ou paralelas', type:'reps', group:'tríceps'},
 
-  fecho_pegada:       {name:'Fecho de pegada na barra fixa', type:'time', group:'pegada', note:'Trabalho direto de pegada, ligado ao handgrip fraco do laudo.'},
+  fecho_pegada:       {name:'Fecho de pegada na barra fixa', type:'time', group:'pegada', note:'Trabalho direto de pegada e antebraço. Segure a barra o máximo que aguentar, sem balançar.'},
   farmer:             {name:'Farmer carry', type:'dist', group:'pegada', note:'Pegada firme, ombro para trás, passo curto.'},
 
   agachamento:        {name:'Agachamento livre barra', type:'reps', group:'quadríceps', note:'Quadril e joelho descem juntos, joelho segue a direção do pé. Dor no joelho: troque por Smith ou leg press com pés mais altos.', alts:['agach_smith','leg_press','hack']},
@@ -68,7 +68,7 @@ const EX = {
 /* -------------------------------------------------------------------------
    2. PROGRAMA PADRÃO
    ------------------------------------------------------------------------- */
-const PROGRAM = [
+let PROGRAM = [
   {key:'upperA', tag:'DIA 1', name:'Upper A', block:'upper', meta:'Peito e costas · Força',
    warmup:'5 min de bike ou esteira leve. Mobilidade: rotação de ombro com bastão 2x10, mobilidade torácica em quatro apoios 2x8. Ativação: face pull leve 2x15.',
    items:[
@@ -359,6 +359,8 @@ function renderHome(){
     '<div class="homestat"><div class="v">' + history.filter(h => new Date(h.date) >= monthStart).length + '</div><div class="l">Este mês</div></div>' +
     '<div class="homestat"><div class="v">' + history.length + '</div><div class="l">Total</div></div>';
 
+  atualizarCabecalhoHome();
+
   const hasActive = !!(session && session.startedAt);
   $('resume').classList.toggle('show', hasActive);
   if(hasActive){
@@ -367,6 +369,25 @@ function renderHome(){
     $('resume-sub').textContent = 'iniciado ' + (mins < 1 ? 'agora há pouco' : 'há ' + mins + ' min') + ', tudo o que você registrou está salvo';
   }
   updateTrainingBadge();
+}
+
+function atualizarCabecalhoHome(){
+  const sub = $('home-sub'), nota = $('home-nota');
+  if(!profile){
+    sub.textContent = 'Upper Lower';
+    nota.textContent = '';
+    return;
+  }
+  const hora = new Date().getHours();
+  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  sub.textContent = saudacao + ', ' + profile.nome + ' · ' + (ROTULOS.objetivo[profile.objetivo] || '') +
+    ' · ' + profile.dias + 'x por semana';
+
+  const d = Number(profile.dias);
+  if(d >= 6) nota.textContent = 'Com 6 dias você fecha o ciclo inteiro na semana. Se acordar quebrado, trocar um dia por descanso rende mais que insistir.';
+  else if(d === 5) nota.textContent = 'Com 5 dias, pule o Upper C ou o Lower C. Priorize manter o Lower B, que é o dia de cadeia posterior.';
+  else if(d === 4) nota.textContent = 'Com 4 dias, faça Upper A, Lower A, Upper B e Lower B. Os treinos C ficam como variação para quando sobrar tempo.';
+  else nota.textContent = 'Com ' + d + ' dias, alterne entre os treinos na ordem em que aparecem, sem se preocupar em fechar a semana toda. O programa sob medida para essa frequência chega nos próximos passos.';
 }
 
 /* -------------------------------------------------------------------------
@@ -1246,7 +1267,7 @@ function toast(msg, actionLabel, cb){
    19. BACKUP
    ------------------------------------------------------------------------- */
 function exportBackup(){
-  const payload = {app:'meu-treino', version:2, exportedAt:new Date().toISOString(), history:history, overrides:overrides, customEx:customEx};
+  const payload = {app:'meu-treino', version:3, exportedAt:new Date().toISOString(), history:history, overrides:overrides, customEx:customEx, profile:profile, corpo:corpo, program:PROGRAM};
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1273,6 +1294,9 @@ async function importBackup(file){
   history = data.history;
   if(data.overrides){ overrides = data.overrides; await Store.set('overrides', overrides); }
   if(data.customEx){ customEx = data.customEx; await Store.set('custom_ex', customEx); }
+  if(data.profile){ profile = data.profile; await Store.set('profile', profile); atualizarAjustes(); }
+  if(Array.isArray(data.program) && data.program.length){ PROGRAM = data.program; await Store.set('program', PROGRAM); }
+  if(data.corpo){ corpo = data.corpo; await Store.set('corpo', corpo); atualizarAjustes(); }
   await saveHistory();
   renderHistory(); renderHome();
   toast('Backup restaurado');
@@ -1415,7 +1439,7 @@ $('btn-export').onclick = exportBackup;
 $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = e => { const f = e.target.files[0]; if(f) importBackup(f); e.target.value = ''; };
 $('btn-wipe').onclick = wipeAll;
-$('btn-resetprog').onclick = resetProgram;
+$('btn-resetprog').onclick = refazerPrograma;
 
 function bindSwitch(id, key, onChange){
   const el = $(id);
@@ -1466,10 +1490,14 @@ $('btn-install').onclick = async () => {
    21. BOOT
    ------------------------------------------------------------------------- */
 async function boot(){
-  const [h, s, active, ov, cx] = await Promise.all([
+  const [h, s, active, ov, cx, pf, cp, pg] = await Promise.all([
     Store.get('history'), Store.get('settings'), Store.get('active_session'),
-    Store.get('overrides'), Store.get('custom_ex')
+    Store.get('overrides'), Store.get('custom_ex'), Store.get('profile'), Store.get('corpo'),
+    Store.get('program')
   ]);
+  if(Array.isArray(pg) && pg.length) PROGRAM = pg;
+  profile = (pf && typeof pf === 'object') ? pf : null;
+  corpo = (cp && typeof cp === 'object') ? cp : null;
   history = Array.isArray(h) ? h : [];
   if(s && typeof s === 'object') settings = Object.assign(settings, s);
   if(ov && typeof ov === 'object') overrides = ov;
@@ -1487,6 +1515,8 @@ async function boot(){
   renderHome();
   renderHistory();
   updateStorageLabel();
+  atualizarAjustes();
+  if(!profile) abrirOnboarding(false);
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
@@ -1501,12 +1531,795 @@ function updateStorageLabel(){
   $('storage-label').textContent = label;
 }
 
+/* =========================================================================
+   GERADOR DE PROGRAMA
+   Função pura: entra o perfil, sai o programa. Não toca em tela nem em
+   armazenamento, o que permite testar sem abrir o navegador.
+   ========================================================================= */
+
+/* Metadados do catálogo -----------------------------------------------------
+   p  padrão de movimento        e  equipamento exigido (todos)
+   m  músculos {nome: peso}      s  articulações exigidas (exclusão por dor)
+   c  complexidade 1 a 3         u  unilateral
+   --------------------------------------------------------------------------- */
+const META = {
+  supino_reto:       {p:'emp_h', m:{peito:1, triceps:.5, ombro:.5}, e:['barra','banco'], s:['ombro','punho'], c:3},
+  supino_maquina:    {p:'emp_h', m:{peito:1, triceps:.5}, e:['maquina'], s:[], c:1},
+  supino_halteres:   {p:'emp_h', m:{peito:1, triceps:.5, ombro:.5}, e:['halter','banco'], s:['ombro'], c:2},
+  supino_incl_hal:   {p:'emp_h', m:{peito:1, ombro:.5, triceps:.5}, e:['halter','banco'], s:['ombro'], c:2},
+  supino_incl_barra: {p:'emp_h', m:{peito:1, ombro:.5, triceps:.5}, e:['barra','banco'], s:['ombro','punho'], c:3},
+  crucifixo:         {p:'emp_h', m:{peito:1}, e:['halter','banco'], s:['ombro'], c:2},
+  crossover:         {p:'emp_h', m:{peito:1}, e:['polia'], s:['ombro'], c:1},
+  flexao:            {p:'emp_h', m:{peito:1, triceps:.5, ombro:.5}, e:['corpo'], s:['punho','ombro'], c:1},
+  flexao_inclinada:  {p:'emp_h', m:{peito:1, triceps:.5}, e:['corpo'], s:['punho'], c:1},
+  flexao_elastico:   {p:'emp_h', m:{peito:1, triceps:.5}, e:['elastico'], s:['punho'], c:1},
+
+  desenv_militar:    {p:'emp_v', m:{ombro:1, triceps:.5}, e:['barra'], s:['ombro','punho','lombar'], c:3},
+  desenv_halteres:   {p:'emp_v', m:{ombro:1, triceps:.5}, e:['halter'], s:['ombro'], c:2},
+  desenv_elastico:   {p:'emp_v', m:{ombro:1, triceps:.5}, e:['elastico'], s:['ombro'], c:1},
+  pike_pushup:       {p:'emp_v', m:{ombro:1, triceps:.5}, e:['corpo'], s:['ombro','punho'], c:2},
+
+  remada_curvada:    {p:'pux_h', m:{costas:1, biceps:.5}, e:['barra'], s:['lombar'], c:3},
+  remada_cavalinho:  {p:'pux_h', m:{costas:1, biceps:.5}, e:['maquina'], s:[], c:2},
+  remada_baixa:      {p:'pux_h', m:{costas:1, biceps:.5}, e:['polia'], s:[], c:1},
+  remada_unilateral: {p:'pux_h', m:{costas:1, biceps:.5}, e:['halter','banco'], s:[], c:2, u:true},
+  remada_halteres:   {p:'pux_h', m:{costas:1, biceps:.5}, e:['halter'], s:['lombar'], c:2},
+  remada_invertida:  {p:'pux_h', m:{costas:1, biceps:.5}, e:['corpo'], s:[], c:1},
+  remada_elastico:   {p:'pux_h', m:{costas:1, biceps:.5}, e:['elastico'], s:[], c:1},
+
+  puxada_pronada:    {p:'pux_v', m:{costas:1, biceps:.5}, e:['polia'], s:['ombro'], c:1},
+  pulldown_neutro:   {p:'pux_v', m:{costas:1, biceps:.5}, e:['polia'], s:[], c:1},
+  barra_fixa:        {p:'pux_v', m:{costas:1, biceps:.5}, e:['barra_fixa'], s:['ombro','cotovelo'], c:3},
+  puxada_elastico:   {p:'pux_v', m:{costas:1, biceps:.5}, e:['elastico'], s:[], c:1},
+
+  elevacao_lateral:  {p:'lateral', m:{ombro:1}, e:['halter'], s:['ombro'], c:1},
+  lateral_elastico:  {p:'lateral', m:{ombro:1}, e:['elastico'], s:['ombro'], c:1},
+  face_pull:         {p:'lateral', m:{ombro:1, costas:.5}, e:['polia'], s:[], c:1},
+
+  rosca_direta:      {p:'biceps', m:{biceps:1}, e:['barra'], s:['punho','cotovelo'], c:1},
+  rosca_alternada:   {p:'biceps', m:{biceps:1}, e:['halter'], s:['cotovelo'], c:1},
+  rosca_martelo:     {p:'biceps', m:{biceps:1}, e:['halter'], s:['cotovelo'], c:1},
+  rosca_scott:       {p:'biceps', m:{biceps:1}, e:['barra','banco'], s:['cotovelo','punho'], c:1},
+  rosca_elastico:    {p:'biceps', m:{biceps:1}, e:['elastico'], s:['cotovelo'], c:1},
+
+  triceps_corda:     {p:'triceps', m:{triceps:1}, e:['polia'], s:['cotovelo'], c:1},
+  triceps_testa:     {p:'triceps', m:{triceps:1}, e:['halter','banco'], s:['cotovelo'], c:2},
+  triceps_mergulho:  {p:'triceps', m:{triceps:1, peito:.5}, e:['corpo'], s:['ombro','punho'], c:2},
+  flexao_diamante:   {p:'triceps', m:{triceps:1, peito:.5}, e:['corpo'], s:['punho','cotovelo'], c:1},
+  triceps_elastico:  {p:'triceps', m:{triceps:1}, e:['elastico'], s:['cotovelo'], c:1},
+
+  agachamento:       {p:'joelho', m:{quadriceps:1, gluteos:.5, core:.5}, e:['barra'], s:['joelho','lombar'], c:3},
+  agach_smith:       {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['smith'], s:['joelho'], c:2},
+  agach_frontal:     {p:'joelho', m:{quadriceps:1, core:.5}, e:['barra'], s:['joelho','punho'], c:3},
+  hack:              {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['maquina'], s:['joelho'], c:1},
+  leg_press:         {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['maquina'], s:['joelho'], c:1},
+  leg_press_alto:    {p:'joelho', m:{quadriceps:.5, gluteos:1}, e:['maquina'], s:['joelho'], c:1},
+  extensora:         {p:'joelho', m:{quadriceps:1}, e:['maquina'], s:['joelho'], c:1},
+  bulgaro:           {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['halter','banco'], s:['joelho'], c:2, u:true},
+  passada:           {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['halter'], s:['joelho'], c:2, u:true},
+  agach_corpo:       {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['corpo'], s:['joelho'], c:1},
+  afundo_corpo:      {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['corpo'], s:['joelho'], c:1, u:true},
+  agach_bulgaro_corpo:{p:'joelho', m:{quadriceps:1, gluteos:1}, e:['corpo'], s:['joelho'], c:2, u:true},
+
+  terra_romeno:      {p:'quadril', m:{posterior:1, gluteos:1, lombar:.5}, e:['barra'], s:['lombar'], c:3},
+  stiff:             {p:'quadril', m:{posterior:1, gluteos:.5}, e:['halter'], s:['lombar'], c:2},
+  flexora:           {p:'quadril', m:{posterior:1}, e:['maquina'], s:['joelho'], c:1},
+  gluteo_polia:      {p:'quadril', m:{gluteos:1}, e:['polia'], s:[], c:1, u:true},
+  hip_thrust:        {p:'quadril', m:{gluteos:1, posterior:.5}, e:['barra','banco'], s:[], c:2},
+  ponte_gluteo:      {p:'quadril', m:{gluteos:1, posterior:.5}, e:['corpo'], s:[], c:1},
+  elevacao_pelvica:  {p:'quadril', m:{gluteos:1, posterior:.5}, e:['corpo','banco'], s:[], c:1},
+  good_morning_elast:{p:'quadril', m:{posterior:1, gluteos:.5}, e:['elastico'], s:['lombar'], c:1},
+
+  panturrilha_pe:    {p:'panturrilha', m:{panturrilha:1}, e:['maquina'], s:['tornozelo'], c:1},
+  panturrilha_sent:  {p:'panturrilha', m:{panturrilha:1}, e:['maquina'], s:['tornozelo'], c:1},
+  panturrilha_corpo: {p:'panturrilha', m:{panturrilha:1}, e:['corpo'], s:['tornozelo'], c:1},
+  panturrilha_halter:{p:'panturrilha', m:{panturrilha:1}, e:['halter'], s:['tornozelo'], c:1},
+
+  prancha:           {p:'core', m:{core:1}, e:['corpo'], s:['ombro'], c:1},
+  prancha_lateral:   {p:'core', m:{core:1}, e:['corpo'], s:['ombro'], c:1},
+  abdominal_polia:   {p:'core', m:{core:1}, e:['polia'], s:[], c:1},
+  abdominal_solo:    {p:'core', m:{core:1}, e:['corpo'], s:[], c:1},
+  bird_dog:          {p:'core', m:{core:1}, e:['corpo'], s:[], c:1},
+
+  fecho_pegada:      {p:'pegada', m:{}, e:['barra_fixa'], s:['cotovelo','punho'], c:1},
+  farmer:            {p:'pegada', m:{core:.5}, e:['halter'], s:['punho'], c:1}
+};
+
+/* isolamento: nunca deve ocupar o lugar de exercício principal */
+['crucifixo','crossover','elevacao_lateral','lateral_elastico','face_pull','rosca_direta','rosca_alternada',
+ 'rosca_martelo','rosca_scott','rosca_elastico','triceps_corda','triceps_testa','triceps_elastico',
+ 'flexao_diamante','extensora','flexora','gluteo_polia','panturrilha_pe','panturrilha_sent','panturrilha_corpo',
+ 'panturrilha_halter','prancha','prancha_lateral','abdominal_polia','abdominal_solo','bird_dog',
+ 'fecho_pegada','farmer'].forEach(id => { if(META[id]) META[id].iso = true; });
+
+/* qualidade do equipamento, para não preferir elástico onde existe barra */
+const NIVEL_EQUIP = {elastico:1, corpo:2, maquina:3, smith:3, polia:3, banco:3, halter:4, barra:5, barra_fixa:5};
+Object.keys(META).forEach(id => {
+  META[id].nivel = Math.max.apply(null, META[id].e.map(eq => NIVEL_EQUIP[eq] || 2));
+});
+
+/* exercícios que ainda não existem no catálogo principal */
+const EX_EXTRA = {
+  flexao:             {name:'Flexão de braço', type:'reps', group:'peito'},
+  flexao_inclinada:   {name:'Flexão com mãos apoiadas', type:'reps', group:'peito', note:'Quanto mais alto o apoio, mais fácil. Comece na altura que você faz 8 repetições limpas.'},
+  flexao_elastico:    {name:'Supino com elástico', type:'reps', group:'peito'},
+  desenv_elastico:    {name:'Desenvolvimento com elástico', type:'reps', group:'ombro'},
+  pike_pushup:        {name:'Flexão pike', type:'reps', group:'ombro', note:'Quadril alto, corpo em V. É a flexão que vira desenvolvimento de ombro.'},
+  remada_halteres:    {name:'Remada curvada com halteres', type:'reps', group:'costas'},
+  remada_invertida:   {name:'Remada invertida', type:'reps', group:'costas', note:'Use uma barra baixa, mesa firme ou o corrimão. Quanto mais deitado, mais difícil.'},
+  remada_elastico:    {name:'Remada com elástico', type:'reps', group:'costas'},
+  puxada_elastico:    {name:'Puxada alta com elástico', type:'reps', group:'costas'},
+  lateral_elastico:   {name:'Elevação lateral com elástico', type:'reps', group:'ombro'},
+  rosca_elastico:     {name:'Rosca com elástico', type:'reps', group:'bíceps'},
+  triceps_elastico:   {name:'Tríceps com elástico', type:'reps', group:'tríceps'},
+  flexao_diamante:    {name:'Flexão diamante', type:'reps', group:'tríceps'},
+  agach_corpo:        {name:'Agachamento peso corporal', type:'reps', group:'quadríceps'},
+  afundo_corpo:       {name:'Afundo peso corporal', type:'reps', group:'quadríceps'},
+  agach_bulgaro_corpo:{name:'Agachamento búlgaro peso corporal', type:'reps', group:'quadríceps'},
+  ponte_gluteo:       {name:'Ponte de glúteo', type:'reps', group:'posterior'},
+  elevacao_pelvica:   {name:'Elevação pélvica apoiada no banco', type:'reps', group:'posterior'},
+  good_morning_elast: {name:'Good morning com elástico', type:'reps', group:'posterior'},
+  panturrilha_corpo:  {name:'Panturrilha em pé sem carga', type:'reps', group:'panturrilha', note:'Faça em um degrau para aumentar a amplitude.'},
+  panturrilha_halter: {name:'Panturrilha em pé com halteres', type:'reps', group:'panturrilha'},
+  abdominal_solo:     {name:'Abdominal no solo', type:'reps', group:'core'},
+  bird_dog:           {name:'Bird dog', type:'time', group:'core', note:'Braço e perna opostos, sem deixar o quadril girar. Bom para lombar sensível.'}
+};
+
+/* equipamento disponível em cada lugar */
+const EQUIP = {
+  academia: ['corpo','halter','barra','banco','barra_fixa','polia','maquina','smith','elastico'],
+  simples:  ['corpo','halter','barra','banco','barra_fixa','polia','elastico'],
+  casa:     ['corpo','halter','banco','elastico'],
+  corpo:    ['corpo']
+};
+
+/* parâmetros por objetivo e papel do exercício */
+const PARAMS = {
+  forca: {
+    principal:{sets:4, reps:'4-6',  rpe:'8',   rir:'2',   rest:180},
+    acessorio:{sets:3, reps:'6-8',  rpe:'8',   rir:'2',   rest:120},
+    isolado:  {sets:3, reps:'8-12', rpe:'8',   rir:'2',   rest:75}
+  },
+  hipertrofia: {
+    principal:{sets:4, reps:'6-8',  rpe:'7-8', rir:'2-3', rest:150},
+    acessorio:{sets:3, reps:'8-12', rpe:'8',   rir:'2',   rest:90},
+    isolado:  {sets:3, reps:'12-15',rpe:'8-9', rir:'1-2', rest:60}
+  },
+  emagrecer: {
+    principal:{sets:4, reps:'6-10', rpe:'7-8', rir:'2-3', rest:90},
+    acessorio:{sets:3, reps:'10-12',rpe:'8',   rir:'2',   rest:60},
+    isolado:  {sets:3, reps:'12-15',rpe:'8-9', rir:'1-2', rest:45}
+  },
+  saude: {
+    principal:{sets:3, reps:'8-12', rpe:'7',   rir:'3',   rest:90},
+    acessorio:{sets:3, reps:'10-12',rpe:'7-8', rir:'2-3', rest:75},
+    isolado:  {sets:2, reps:'12-15',rpe:'8',   rir:'2',   rest:45}
+  }
+};
+
+/* quantos exercícios cabem no tempo informado */
+const TETO_EXERCICIOS = {30:4, 45:5, 60:6, 90:8};
+
+/* divisões por dia disponível */
+const MODELOS = {
+  full_A: {nome:'Corpo inteiro A', block:'full', slots:[['emp_h','principal'],['pux_h','principal'],['joelho','principal'],['quadril','acessorio'],['lateral','isolado'],['core','isolado']]},
+  full_B: {nome:'Corpo inteiro B', block:'full', slots:[['emp_v','principal'],['pux_v','principal'],['quadril','principal'],['joelho','acessorio'],['biceps','isolado'],['triceps','isolado']]},
+  full_C: {nome:'Corpo inteiro C', block:'full', slots:[['emp_h','acessorio'],['pux_h','acessorio'],['joelho','acessorio'],['quadril','acessorio'],['lateral','isolado'],['core','isolado']]},
+  upper_A:{nome:'Superiores A', block:'upper', slots:[['emp_h','principal'],['pux_h','principal'],['emp_v','acessorio'],['pux_v','acessorio'],['lateral','isolado'],['biceps','isolado'],['triceps','isolado']]},
+  upper_B:{nome:'Superiores B', block:'upper', slots:[['pux_v','principal'],['emp_v','principal'],['pux_h','acessorio'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['biceps','isolado']]},
+  lower_A:{nome:'Inferiores A', block:'lower', slots:[['joelho','principal'],['quadril','acessorio'],['joelho','acessorio'],['quadril','acessorio'],['panturrilha','isolado'],['core','isolado']]},
+  lower_B:{nome:'Inferiores B', block:'lower', slots:[['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['joelho','acessorio'],['panturrilha','isolado'],['core','isolado']]},
+  push:   {nome:'Empurrar', block:'upper', slots:[['emp_h','principal'],['emp_v','principal'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['triceps','isolado']]},
+  pull:   {nome:'Puxar', block:'upper', slots:[['pux_v','principal'],['pux_h','principal'],['pux_h','acessorio'],['pux_v','acessorio'],['biceps','isolado'],['biceps','isolado']]},
+  legs:   {nome:'Pernas', block:'lower', slots:[['joelho','principal'],['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['panturrilha','isolado'],['core','isolado']]}
+};
+
+const SPLITS = {
+  2:['full_A','full_B'],
+  3:['full_A','full_B','full_C'],
+  4:['upper_A','lower_A','upper_B','lower_B'],
+  5:['push','pull','legs','upper_A','lower_A'],
+  6:['push','pull','legs','push','pull','legs']
+};
+
+/* sem equipamento não existe puxada vertical nem rosca, então PPL não fecha */
+const SPLITS_CORPO = {
+  2:['full_A','full_B'],
+  3:['full_A','full_B','full_C'],
+  4:['upper_A','lower_A','upper_B','lower_B'],
+  5:['upper_A','lower_A','upper_B','lower_B','full_A'],
+  6:['upper_A','lower_A','upper_B','lower_B','full_A','full_B']
+};
+
+/* ordem de recurso quando um espaço do treino fica sem candidato */
+const RESERVA = ['emp_h','pux_h','joelho','quadril','core','emp_v','triceps','lateral','biceps','panturrilha'];
+
+const AQUECIMENTOS = {
+  upper:'5 minutos de bike, remo ou corda. Rotação de ombro com bastão ou elástico, 2x10. Uma série leve do primeiro exercício antes de começar valendo.',
+  lower:'5 minutos de bike ou caminhada inclinada. Mobilidade de quadril e tornozelo, 2x30s de cada lado. Uma série de agachamento peso corporal, 2x10.',
+  full:'5 minutos de caminhada, bike ou polichinelo. Mobilidade de ombro e quadril, 2x10 de cada. Uma série leve do primeiro exercício antes de começar valendo.'
+};
+
+/* -------------------------------------------------------------------------
+   Seleção de exercício para um espaço do treino
+   ------------------------------------------------------------------------- */
+function candidatos(padrao, perfil){
+  const disp = EQUIP[perfil.local] || EQUIP.academia;
+  const dores = (perfil.dores || []).filter(d => d !== 'nenhuma');
+  const maxC = perfil.experiencia === 'iniciante' ? 2 : 3;
+  return Object.keys(META).filter(id => {
+    const t = META[id];
+    if(t.p !== padrao) return false;
+    if(t.c > maxC) return false;
+    if(!t.e.every(eq => disp.indexOf(eq) !== -1)) return false;
+    if(t.s.some(art => dores.indexOf(art) !== -1)) return false;
+    return true;
+  });
+}
+
+const ALVO_COMPLEXIDADE = {principal:3, acessorio:2, isolado:1};
+
+function escolherExercicio(padrao, papel, perfil, usados, noDia){
+  const lista = candidatos(padrao, perfil).filter(id => (noDia || []).indexOf(id) === -1);
+  if(!lista.length) return null;
+  const prio = perfil.prioridade || [];
+  const alvo = ALVO_COMPLEXIDADE[papel];
+  const melhorNivel = Math.max.apply(null, lista.map(id => META[id].nivel));
+  const pontuado = lista.map(id => {
+    const t = META[id];
+    let pt = 0;
+    // variedade só vale entre equipamentos equivalentes: elástico não substitui polia
+    if(usados.indexOf(id) === -1 && t.nivel >= melhorNivel - 1) pt += 30;
+    if(usados.indexOf(id) !== -1) pt -= 10;
+    if(t.iso && papel !== 'isolado') pt -= 60;                     // isolamento não substitui composto
+    if(!t.iso && papel === 'isolado') pt -= 12;
+    pt += t.nivel * 7;                                             // usa o melhor equipamento disponível
+    pt += (3 - Math.abs(alvo - t.c)) * 4;
+    if(prio.some(g => grupoBate(g, t.m))) pt += 8;
+    if(t.u && papel === 'principal') pt -= 6;
+    return {id: id, pt: pt};
+  });
+  pontuado.sort((a, b) => b.pt - a.pt || (a.id < b.id ? -1 : 1));
+  return pontuado[0].id;
+}
+
+function grupoBate(grupo, musculos){
+  const mapa = {peito:['peito'], costas:['costas'], ombro:['ombro'], bracos:['biceps','triceps'],
+                gluteos:['gluteos'], pernas:['quadriceps','posterior','gluteos'], core:['core']};
+  const alvos = mapa[grupo] || [grupo];
+  return alvos.some(a => (musculos[a] || 0) >= 1);
+}
+
+/* -------------------------------------------------------------------------
+   Montagem
+   ------------------------------------------------------------------------- */
+function ajustarSeries(base, papel, perfil){
+  let s = base;
+  if(perfil.experiencia === 'iniciante') s = Math.max(2, s - 1);
+  if(perfil.experiencia === 'avancado' && papel === 'principal') s += 1;
+  return s;
+}
+
+function repsDoTipo(tipo, reps){
+  if(tipo === 'time') return '30-45s';
+  if(tipo === 'dist') return '30m';
+  return reps;
+}
+
+function tempoEstimado(itens){
+  // 5 min de aquecimento mais série a série, contando execução e descanso
+  return 300 + itens.reduce((a, i) => a + i.sets * (40 + i.rest), 0);
+}
+
+function gerarPrograma(perfil){
+  const objetivo = PARAMS[perfil.objetivo] ? perfil.objetivo : 'hipertrofia';
+  const tabela = perfil.local === 'corpo' ? SPLITS_CORPO : SPLITS;
+  const dias = tabela[Number(perfil.dias)] || tabela[3];
+  const teto = TETO_EXERCICIOS[Number(perfil.tempo)] || 6;
+  const limite = (Number(perfil.tempo) || 60) * 60;
+  const usados = [];
+  const programa = [];
+
+  dias.forEach((modeloId, i) => {
+    const modelo = MODELOS[modeloId];
+    const itens = [];
+
+    modelo.slots.forEach(([padrao, papel]) => {
+      if(itens.length >= teto) return;
+      const id = escolherExercicio(padrao, papel, perfil, usados, itens.map(x => x.ex));
+      if(!id) return;                                  // sem opção viável, o espaço fica vazio
+      usados.push(id);
+      const def = EX[id] || EX_EXTRA[id];
+      const par = PARAMS[objetivo][papel];
+      itens.push({
+        ex: id,
+        sets: ajustarSeries(par.sets, papel, perfil),
+        reps: repsDoTipo(def.type, par.reps),
+        rpe: par.rpe, rir: par.rir, rest: par.rest,
+        papel: papel
+      });
+    });
+
+    // faltou candidato em algum espaço: completa com o que estiver disponível
+    const minimo = Math.min(4, teto);
+    for(let r = 0; r < RESERVA.length && itens.length < minimo; r++){
+      const papel = itens.length < 2 ? 'principal' : 'acessorio';
+      const id = escolherExercicio(RESERVA[r], papel, perfil, usados, itens.map(x => x.ex));
+      if(!id) continue;
+      usados.push(id);
+      const def = EX[id] || EX_EXTRA[id];
+      const par = PARAMS[objetivo][papel];
+      itens.push({ex:id, sets:ajustarSeries(par.sets, papel, perfil), reps:repsDoTipo(def.type, par.reps),
+                  rpe:par.rpe, rir:par.rir, rest:par.rest, papel:papel});
+    }
+
+    // corta o que não cabe no tempo, começando pelos isolados do fim
+    while(tempoEstimado(itens) > limite && itens.length > 3){
+      let alvo = -1;
+      for(let k = itens.length - 1; k >= 0; k--){ if(itens[k].papel === 'isolado'){ alvo = k; break; } }
+      itens.splice(alvo === -1 ? itens.length - 1 : alvo, 1);
+    }
+    // ainda estourando: encolhe o descanso, com piso por papel
+    if(tempoEstimado(itens) > limite){
+      const trabalho = itens.reduce((a, x) => a + x.sets * 40, 0);
+      const descanso = itens.reduce((a, x) => a + x.sets * x.rest, 0);
+      const sobra = limite - 300 - trabalho;
+      if(sobra > 0 && descanso > 0){
+        const fator = sobra / descanso;
+        const piso = {principal:75, acessorio:60, isolado:40};
+        itens.forEach(x => { x.rest = Math.max(piso[x.papel], Math.round(x.rest * fator / 5) * 5); });
+      }
+    }
+    // último recurso: tira séries, sem descer de 2
+    let guarda = 0;
+    while(tempoEstimado(itens) > limite && guarda++ < 30){
+      const ordem = itens.slice().sort((a, b) => (b.papel === 'isolado' ? 1 : 0) - (a.papel === 'isolado' ? 1 : 0) || b.sets - a.sets);
+      const alvo = ordem.find(x => x.sets > 2);
+      if(!alvo) break;
+      alvo.sets--;
+    }
+
+    // prioridade ganha uma série a mais no exercício correspondente
+    (perfil.prioridade || []).forEach(g => {
+      const alvo = itens.find(x => grupoBate(g, META[x.ex].m));
+      if(alvo && tempoEstimado(itens) + (40 + alvo.rest) <= limite) alvo.sets++;
+    });
+
+    programa.push({
+      key: 'd' + (i + 1),
+      tag: 'DIA ' + (i + 1),
+      name: modelo.nome + (dias.filter(d => d === modeloId).length > 1 && dias.indexOf(modeloId) !== i ? ' B' : ''),
+      block: modelo.block,
+      meta: descreverDia(itens),
+      warmup: AQUECIMENTOS[modelo.block],
+      items: itens.map(it => ({ex:it.ex, sets:it.sets, reps:it.reps, rpe:it.rpe, rir:it.rir, rest:it.rest}))
+    });
+  });
+
+  return programa;
+}
+
+function descreverDia(itens){
+  const conta = {};
+  itens.forEach(it => {
+    Object.keys(META[it.ex].m).forEach(mus => {
+      if(META[it.ex].m[mus] >= 1) conta[mus] = (conta[mus] || 0) + it.sets;
+    });
+  });
+  const nomes = {peito:'peito', costas:'costas', ombro:'ombros', biceps:'bíceps', triceps:'tríceps',
+                 quadriceps:'quadríceps', posterior:'posterior', gluteos:'glúteos', panturrilha:'panturrilha', core:'core'};
+  const top = Object.keys(conta).sort((a, b) => conta[b] - conta[a]).slice(0, 3).map(k => nomes[k] || k);
+  return top.join(', ') + ' · ' + itens.length + ' exercícios';
+}
+
+/* volume semanal por grupo, usado nos testes e no resumo do programa */
+function volumeSemanal(programa){
+  const conta = {};
+  programa.forEach(dia => dia.items.forEach(it => {
+    const m = META[it.ex] ? META[it.ex].m : {};
+    Object.keys(m).forEach(mus => { conta[mus] = (conta[mus] || 0) + it.sets * m[mus]; });
+  }));
+  Object.keys(conta).forEach(k => conta[k] = Math.round(conta[k]));
+  return conta;
+}
+
+/* junta os exercícios extras ao catálogo principal */
+Object.keys(EX_EXTRA).forEach(id => { if(!EX[id]) EX[id] = EX_EXTRA[id]; });
+
+/* =========================================================================
+   ONBOARDING E PERFIL
+   As perguntas existem para mudar o treino. O que nao muda o treino
+   (sexo, idade, altura, peso) fica em "Dados corporais", opcional.
+   ========================================================================= */
+const PERGUNTAS = [
+  {
+    id:'nome', tipo:'texto', obrigatoria:true,
+    titulo:'Como podemos te chamar?',
+    dica:'Só para o app deixar de falar com um estranho. Fica salvo no seu aparelho.',
+    placeholder:'Seu nome ou apelido'
+  },
+  {
+    id:'experiencia', tipo:'unica', obrigatoria:true,
+    titulo:'Você treina hoje?',
+    dica:'Isso define quais exercícios entram e o quanto dá para progredir por semana.',
+    opcoes:[
+      {v:'iniciante', l:'Nunca treinei', d:'ou parei faz mais de 6 meses'},
+      {v:'retomando', l:'Treino há menos de 1 ano', d:'ainda meio irregular'},
+      {v:'intermediario', l:'Treino consistente', d:'de 1 a 3 anos'},
+      {v:'avancado', l:'Treino sério', d:'há mais de 3 anos'}
+    ]
+  },
+  {
+    id:'dias', tipo:'unica', obrigatoria:true, grade:true,
+    titulo:'Quantos dias por semana você consegue treinar de verdade?',
+    dica:'Vale responder pelo pior mês do ano, não pelo melhor. É isso que define a divisão do treino.',
+    opcoes:[{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5'},{v:6,l:'6'}]
+  },
+  {
+    id:'tempo', tipo:'unica', obrigatoria:true,
+    titulo:'Quanto tempo você tem por sessão?',
+    dica:'Contando o aquecimento. Define quantos exercícios cabem sem você ter que sair no meio.',
+    opcoes:[
+      {v:30, l:'Até 30 minutos'},
+      {v:45, l:'Uns 45 minutos'},
+      {v:60, l:'Cerca de 1 hora'},
+      {v:90, l:'1h30 ou mais'}
+    ]
+  },
+  {
+    id:'local', tipo:'unica', obrigatoria:true,
+    titulo:'Onde você treina?',
+    dica:'A pergunta que mais muda o seu treino. Não adianta prescrever o que você não tem.',
+    opcoes:[
+      {v:'academia', l:'Academia completa', d:'barras, halteres, máquinas e polias'},
+      {v:'simples', l:'Academia simples', d:'halteres, barras e algumas máquinas'},
+      {v:'casa', l:'Em casa', d:'com halteres ou elásticos'},
+      {v:'corpo', l:'Só peso corporal', d:'sem nenhum equipamento'}
+    ]
+  },
+  {
+    id:'objetivo', tipo:'unica', obrigatoria:true,
+    titulo:'Qual seu principal objetivo?',
+    dica:'Escolha um só. É o que define repetições, carga e descanso.',
+    opcoes:[
+      {v:'hipertrofia', l:'Ganhar massa muscular', d:'6 a 12 repetições, descanso médio'},
+      {v:'forca', l:'Ficar mais forte', d:'poucas repetições, carga alta, descanso longo'},
+      {v:'emagrecer', l:'Perder gordura mantendo músculo', d:'treino de hipertrofia mais aeróbico'},
+      {v:'saude', l:'Saúde e condicionamento', d:'volume moderado, corpo todo'}
+    ]
+  },
+  {
+    id:'dores', tipo:'multipla', obrigatoria:true, nenhuma:'nenhuma',
+    titulo:'Tem alguma dor ou lesão que limita algum movimento?',
+    dica:'O app só usa isso para tirar exercício da lista. Ele não trata nada e não substitui avaliação profissional.',
+    opcoes:[
+      {v:'ombro', l:'Ombro'}, {v:'cotovelo', l:'Cotovelo'}, {v:'punho', l:'Punho'},
+      {v:'lombar', l:'Lombar'}, {v:'quadril', l:'Quadril'}, {v:'joelho', l:'Joelho'},
+      {v:'tornozelo', l:'Tornozelo'}, {v:'nenhuma', l:'Nenhuma'}
+    ]
+  },
+  {
+    id:'prioridade', tipo:'multipla', max:2, opcional:true,
+    titulo:'Quer priorizar algum grupo muscular?',
+    dica:'Pode escolher até dois, ou pular. O grupo escolhido ganha um pouco mais de volume na semana.',
+    opcoes:[
+      {v:'peito', l:'Peito'}, {v:'costas', l:'Costas'}, {v:'ombro', l:'Ombros'},
+      {v:'bracos', l:'Braços'}, {v:'gluteos', l:'Glúteos'},
+      {v:'pernas', l:'Pernas'}, {v:'core', l:'Abdômen'}
+    ]
+  }
+];
+
+const ROTULOS = {
+  experiencia:{iniciante:'Nunca treinei', retomando:'Menos de 1 ano', intermediario:'1 a 3 anos', avancado:'Mais de 3 anos'},
+  local:{academia:'Academia completa', simples:'Academia simples', casa:'Em casa', corpo:'Peso corporal'},
+  objetivo:{hipertrofia:'Massa muscular', forca:'Força', emagrecer:'Perder gordura', saude:'Saúde geral'}
+};
+
+let profile = null;
+let corpo = null;
+let onbDraft = {};
+let onbIdx = 0;
+let onbEditando = false;
+
+/* -------------------------------------------------------------------------
+   Fluxo
+   ------------------------------------------------------------------------- */
+function abrirOnboarding(editando){
+  onbEditando = !!editando;
+  onbDraft = editando && profile ? Object.assign({}, profile) : {};
+  onbIdx = 0;
+  $('onboarding').hidden = false;
+  desenharPergunta();
+}
+
+function fecharOnboarding(){
+  $('onboarding').hidden = true;
+}
+
+function desenharPergunta(){
+  const total = PERGUNTAS.length + 1;           // perguntas mais a tela de resumo
+  const p = PERGUNTAS[onbIdx];
+  $('onb-bar').style.width = Math.round(((onbIdx) / total) * 100) + '%';
+  $('onb-step').textContent = Math.min(onbIdx + 1, total) + '/' + total;
+  $('onb-back').disabled = onbIdx === 0;
+  $('onb-body').scrollTop = 0;
+
+  if(!p) return desenharResumo();
+
+  let corpoHtml = '<div class="onb-q">' + esc(p.titulo) + '</div>' +
+                  '<div class="onb-hint">' + esc(p.dica) + '</div>';
+
+  if(p.tipo === 'texto'){
+    corpoHtml += '<input class="onb-input" id="onb-texto" type="text" autocomplete="given-name" ' +
+      'placeholder="' + esc(p.placeholder) + '" value="' + esc(onbDraft[p.id] || '') + '" maxlength="30">';
+  }else{
+    const sel = onbDraft[p.id];
+    corpoHtml += '<div class="' + (p.grade ? 'onb-grid' : 'onb-opts') + '">' +
+      p.opcoes.map(o => {
+        const marcado = p.tipo === 'multipla'
+          ? Array.isArray(sel) && sel.indexOf(o.v) !== -1
+          : String(sel) === String(o.v);
+        return '<button class="onb-opt' + (marcado ? ' sel' : '') + '" data-opt="' + esc(o.v) + '">' +
+          '<span><b>' + esc(o.l) + '</b>' + (o.d ? '<small>' + esc(o.d) + '</small>' : '') + '</span>' +
+          (p.grade ? '' : '<span class="tick" aria-hidden="true">✓</span>') +
+          '</button>';
+      }).join('') + '</div>';
+  }
+  $('onb-body').innerHTML = corpoHtml;
+
+  $('onb-foot').innerHTML =
+    '<button class="onb-next" id="onb-next">' + (onbEditando ? 'Continuar' : 'Continuar') + '</button>' +
+    (p.opcional ? '<button class="onb-skip" id="onb-skip">Pular esta</button>' : '');
+
+  atualizarBotao();
+  if(p.tipo === 'texto'){
+    const inp = $('onb-texto');
+    inp.addEventListener('input', atualizarBotao);
+    setTimeout(() => inp.focus(), 60);
+  }
+}
+
+function respostaValida(){
+  const p = PERGUNTAS[onbIdx];
+  if(!p) return true;
+  if(p.opcional) return true;
+  const v = p.tipo === 'texto' ? ($('onb-texto') ? $('onb-texto').value.trim() : '') : onbDraft[p.id];
+  if(p.tipo === 'multipla') return Array.isArray(v) && v.length > 0;
+  return v !== undefined && v !== null && v !== '';
+}
+
+function atualizarBotao(){
+  const b = $('onb-next');
+  if(b) b.disabled = !respostaValida();
+}
+
+function escolher(valor){
+  const p = PERGUNTAS[onbIdx];
+  if(p.tipo === 'multipla'){
+    let atual = Array.isArray(onbDraft[p.id]) ? onbDraft[p.id].slice() : [];
+    const ehNenhuma = p.nenhuma && valor === p.nenhuma;
+    if(atual.indexOf(valor) !== -1){
+      atual = atual.filter(x => x !== valor);
+    }else{
+      if(ehNenhuma) atual = [valor];
+      else {
+        atual = atual.filter(x => x !== p.nenhuma);
+        if(p.max && atual.length >= p.max) atual.shift();
+        atual.push(valor);
+      }
+    }
+    onbDraft[p.id] = atual;
+    document.querySelectorAll('#onb-body .onb-opt').forEach(el =>
+      el.classList.toggle('sel', atual.indexOf(el.dataset.opt) !== -1));
+    atualizarBotao();
+    return;
+  }
+  // valores numericos voltam como numero
+  const bruto = p.opcoes.find(o => String(o.v) === String(valor));
+  onbDraft[p.id] = bruto ? bruto.v : valor;
+  document.querySelectorAll('#onb-body .onb-opt').forEach(el => el.classList.toggle('sel', el.dataset.opt === String(valor)));
+  atualizarBotao();
+  setTimeout(avancar, 180);   // escolha unica segue sozinha
+}
+
+function avancar(){
+  const p = PERGUNTAS[onbIdx];
+  if(p && p.tipo === 'texto'){
+    const v = $('onb-texto') ? $('onb-texto').value.trim() : '';
+    if(!v) return;
+    onbDraft[p.id] = v;
+  }
+  if(p && !respostaValida()) return;
+  onbIdx++;
+  desenharPergunta();
+}
+
+function voltar(){
+  if(onbIdx === 0) return;
+  onbIdx--;
+  desenharPergunta();
+}
+
+function desenharResumo(){
+  $('onb-bar').style.width = '100%';
+  const d = onbDraft;
+  const linha = (r, v) => '<div class="onb-linha"><span>' + r + '</span><span>' + esc(v) + '</span></div>';
+  const dores = (d.dores || []).filter(x => x !== 'nenhuma');
+  const prio = d.prioridade || [];
+
+  $('onb-body').innerHTML =
+    '<div class="onb-q">Tudo certo, ' + esc(d.nome) + '</div>' +
+    '<div class="onb-hint">Confira suas respostas. Dá para mudar quando quiser, em Ajustes.</div>' +
+    '<div class="onb-resumo">' +
+      linha('Experiência', ROTULOS.experiencia[d.experiencia]) +
+      linha('Frequência', d.dias + ' dias por semana') +
+      linha('Tempo por sessão', d.tempo >= 90 ? '1h30 ou mais' : d.tempo + ' minutos') +
+      linha('Onde treina', ROTULOS.local[d.local]) +
+      linha('Objetivo', ROTULOS.objetivo[d.objetivo]) +
+      linha('Limitações', dores.length ? dores.join(', ') : 'nenhuma') +
+      (prio.length ? linha('Prioridade', prio.join(', ')) : '') +
+    '</div>' +
+    '<div class="aviso">Este app não substitui avaliação de um profissional de educação física ou de saúde. ' +
+    'Se você tem dor, lesão ou condição clínica, procure orientação antes de treinar. ' +
+    'As limitações que você marcou servem apenas para tirar exercícios da sua lista.</div>';
+
+  $('onb-foot').innerHTML = '<button class="onb-next" id="onb-next">' +
+    (onbEditando ? 'Salvar alterações' : 'Começar a treinar') + '</button>';
+  $('onb-next').onclick = concluirOnboarding;
+  $('onb-step').textContent = (PERGUNTAS.length + 1) + '/' + (PERGUNTAS.length + 1);
+}
+
+async function concluirOnboarding(){
+  profile = Object.assign({}, onbDraft, {
+    criadoEm: (profile && profile.criadoEm) || new Date().toISOString(),
+    atualizadoEm: new Date().toISOString()
+  });
+  if(!Array.isArray(profile.prioridade)) profile.prioridade = [];
+  if(!Array.isArray(profile.dores)) profile.dores = [];
+  await Store.set('profile', profile);
+  await aplicarPrograma(gerarPrograma(profile));
+  fecharOnboarding();
+  renderHome();
+  atualizarAjustes();
+  mostrarProgramaNovo();
+}
+
+async function aplicarPrograma(novo){
+  PROGRAM = novo;
+  overrides = {};                       // montagens antigas não valem para o programa novo
+  await Store.set('program', novo);
+  await Store.set('overrides', overrides);
+}
+
+function mostrarProgramaNovo(){
+  const vol = volumeSemanal(PROGRAM);
+  const nomes = {peito:'Peito', costas:'Costas', ombro:'Ombros', biceps:'Bíceps', triceps:'Tríceps',
+                 quadriceps:'Quadríceps', posterior:'Posterior', gluteos:'Glúteos', panturrilha:'Panturrilha', core:'Core'};
+  const linhas = Object.keys(vol).filter(k => nomes[k] && vol[k] > 0)
+    .sort((a,b) => vol[b] - vol[a])
+    .map(k => '<div class="onb-linha"><span>' + nomes[k] + '</span><span>' + vol[k] + ' séries</span></div>').join('');
+
+  $('sheet-body').innerHTML =
+    '<h2 id="sheet-title">Seu programa está pronto</h2>' +
+    '<p>Montei ' + PROGRAM.length + ' treinos a partir das suas respostas. ' +
+    'Você pode trocar, reordenar e excluir exercícios durante o treino, e refazer o programa quando quiser em Ajustes.</p>' +
+    '<div class="onb-resumo">' +
+      PROGRAM.map(d => '<div class="onb-linha"><span>' + esc(d.name) + '</span><span>' + d.items.length + ' exercícios</span></div>').join('') +
+    '</div>' +
+    '<div class="sumsection">Séries por semana</div>' +
+    '<div class="onb-resumo">' + linhas + '</div>' +
+    '<div class="sheetact" style="margin-top:16px"><button class="btn-primary" id="prog-ok">Ver meus treinos</button></div>';
+  openBackdrop($('sheet-backdrop'), null, true);
+  $('prog-ok').onclick = () => backdropCloser && backdropCloser();
+}
+
+async function refazerPrograma(){
+  if(!profile) return abrirOnboarding(false);
+  const ok = await askConfirm({
+    title:'Refazer seu programa?',
+    text:'Vou montar os treinos de novo a partir das suas respostas atuais. Seu histórico não é afetado, mas as montagens que você salvou como padrão são descartadas.',
+    confirmLabel:'Refazer'
+  });
+  if(!ok) return;
+  await aplicarPrograma(gerarPrograma(profile));
+  renderHome();
+  mostrarProgramaNovo();
+}
+
+/* -------------------------------------------------------------------------
+   Dados corporais (opcional, fora do onboarding)
+   ------------------------------------------------------------------------- */
+function abrirDadosCorporais(){
+  const c = corpo || {};
+  const el = $('sheet-backdrop');
+  $('sheet-body').innerHTML =
+    '<div class="sheethead"><h2 id="sheet-title">Dados corporais</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    '<p>Tudo opcional. Nada disso muda o treino que você recebe, serve para acompanhar sua evolução com o tempo. ' +
+    'Fica salvo só no seu aparelho.</p>' +
+    '<div class="onb-opts">' +
+      '<input class="onb-input" id="c-idade" type="number" inputmode="numeric" min="10" max="100" placeholder="Idade" value="' + esc(c.idade || '') + '">' +
+      '<input class="onb-input" id="c-altura" type="number" inputmode="numeric" min="100" max="250" placeholder="Altura em cm" value="' + esc(c.altura || '') + '">' +
+      '<input class="onb-input" id="c-peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="Peso em kg" value="' + esc(c.peso || '') + '">' +
+      '<div class="onb-opts" style="gap:8px">' +
+        ['feminino','masculino','prefiro não dizer'].map(g =>
+          '<button class="onb-opt' + (c.sexo === g ? ' sel' : '') + '" data-sexo="' + g + '"><span>' + g.charAt(0).toUpperCase() + g.slice(1) + '</span><span class="tick" aria-hidden="true">✓</span></button>').join('') +
+      '</div>' +
+    '</div>' +
+    '<div class="sheetact" style="margin-top:16px">' +
+      '<button class="btn-ghost" data-fechar="1">Voltar</button>' +
+      '<button class="btn-primary" id="c-salvar">Salvar</button>' +
+    '</div>';
+  openBackdrop(el, null, true);
+  let sexo = c.sexo || '';
+  $('sheet-body').querySelectorAll('[data-sexo]').forEach(b => b.onclick = () => {
+    sexo = b.dataset.sexo;
+    $('sheet-body').querySelectorAll('[data-sexo]').forEach(x => x.classList.toggle('sel', x === b));
+  });
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  $('c-salvar').onclick = async () => {
+    corpo = {
+      idade: $('c-idade').value || '',
+      altura: $('c-altura').value || '',
+      peso: $('c-peso').value || '',
+      sexo: sexo
+    };
+    await Store.set('corpo', corpo);
+    if(backdropCloser) backdropCloser();
+    atualizarAjustes();
+    toast('Dados salvos');
+  };
+}
+
+function atualizarAjustes(){
+  if(profile){
+    const dores = (profile.dores || []).filter(x => x !== 'nenhuma');
+    $('perfil-resumo').textContent = [
+      ROTULOS.objetivo[profile.objetivo],
+      profile.dias + 'x por semana',
+      ROTULOS.local[profile.local]
+    ].join(' · ') + (dores.length ? ' · evitando ' + dores.join(', ') : '');
+  }
+  if(corpo && (corpo.peso || corpo.altura || corpo.idade)){
+    const partes = [];
+    if(corpo.idade) partes.push(corpo.idade + ' anos');
+    if(corpo.altura) partes.push(corpo.altura + ' cm');
+    if(corpo.peso) partes.push(corpo.peso + ' kg');
+    $('corpo-resumo').textContent = partes.join(' · ');
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Eventos
+   ------------------------------------------------------------------------- */
+$('onb-back').onclick = voltar;
+$('onb-body').addEventListener('click', e => {
+  const b = e.target.closest('[data-opt]');
+  if(b) escolher(b.dataset.opt);
+});
+$('onb-foot').addEventListener('click', e => {
+  if(onbIdx >= PERGUNTAS.length) return;          // tela de resumo tem o proprio handler
+  const n = e.target.closest('#onb-next');
+  if(n && !n.disabled) return avancar();
+  if(e.target.closest('#onb-skip')) return avancar();
+});
+$('onb-body').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && PERGUNTAS[onbIdx] && PERGUNTAS[onbIdx].tipo === 'texto'){ e.preventDefault(); avancar(); }
+});
+$('btn-perfil').onclick = () => abrirOnboarding(true);
+$('btn-corpo').onclick = abrirDadosCorporais;
+
 /* atalho para inspecionar o estado pelo console do navegador durante um treino */
 window.MT = {
   get session(){ return session; },
   get history(){ return history; },
   get settings(){ return settings; },
-  get overrides(){ return overrides; }
+  get overrides(){ return overrides; },
+  get profile(){ return profile; },
+  get program(){ return PROGRAM; },
+  EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
+  gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado
 };
 
 boot();
