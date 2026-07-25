@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Upper Lower — Jonathan</title>
+<style>
+  :root{
+    --bg: #101314;
+    --bg-elev: #181c1e;
+    --card: #1d2225;
+    --card-2: #232830;
+    --line: #2a3034;
+    --text: #eef1f0;
+    --text-dim: #8b959a;
+    --text-faint: #5d666b;
+    --accent: #b9ff3c;
+    --accent-dim: #7a9b2c;
+    --amber: #ffb648;
+    --danger: #ff6b5e;
+    --radius: 14px;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --display: 'Space Grotesk', 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); height:100%; overscroll-behavior-y:none;}
+  #app{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; position:relative; background:var(--bg);}
+
+  /* ---------- top bar ---------- */
+  .topbar{padding:18px 20px 10px; display:flex; align-items:center; justify-content:space-between;}
+  .topbar h1{font-family:var(--display); font-size:20px; font-weight:700; margin:0; letter-spacing:-0.01em;}
+  .topbar .sub{font-size:12px; color:var(--text-dim); margin-top:2px;}
+  .back-btn{background:none;border:none;color:var(--text); font-size:15px; display:flex; align-items:center; gap:6px; padding:6px 4px; cursor:pointer;}
+
+  /* ---------- screens ---------- */
+  .screen{display:none; flex:1; flex-direction:column; padding-bottom:90px;}
+  .screen.active{display:flex;}
+
+  /* ---------- home: day cards ---------- */
+  .weeklabel{padding:0 20px 12px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); font-weight:600;}
+  .daylist{padding:0 16px; display:flex; flex-direction:column; gap:10px;}
+  .daycard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:border-color .15s;}
+  .daycard:active{border-color:var(--accent);}
+  .daycard .left{display:flex; flex-direction:column; gap:4px;}
+  .daycard .tag{font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:.05em;}
+  .daycard .name{font-family:var(--display); font-size:17px; font-weight:600;}
+  .daycard .meta{font-size:12px; color:var(--text-dim);}
+  .daycard .arrow{color:var(--text-faint); font-size:20px;}
+  .divider-note{margin:18px 20px 4px; font-size:12px; color:var(--text-dim); line-height:1.5; background:var(--card-2); border-radius:10px; padding:12px 14px; border:1px solid var(--line);}
+
+  /* ---------- exercise list (session) ---------- */
+  .session-meta{padding:0 20px 14px; display:flex; gap:18px;}
+  .session-meta .m{display:flex; flex-direction:column;}
+  .session-meta .m .v{font-family:var(--mono); font-size:18px; font-weight:600;}
+  .session-meta .m .l{font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em;}
+
+  .exlist{padding:0 16px; display:flex; flex-direction:column; gap:12px;}
+  .excard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  .exhead{padding:14px 16px 10px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .exhead .idx{font-family:var(--mono); font-size:12px; color:var(--accent-dim); margin-bottom:2px;}
+  .exhead .exname{font-family:var(--display); font-weight:600; font-size:15.5px; line-height:1.25;}
+  .exhead .target{font-size:11.5px; color:var(--text-dim); margin-top:4px; font-family:var(--mono);}
+  .exhead .tags{display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;}
+  .tagpill{font-size:10px; padding:2px 7px; border-radius:20px; background:var(--card-2); color:var(--text-dim); border:1px solid var(--line);}
+
+  .setrow-head, .setrow{display:grid; grid-template-columns: 34px 1fr 1fr 1fr 34px; gap:8px; align-items:center; padding:6px 16px;}
+  .setrow-head{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-faint); padding-top:4px; padding-bottom:2px;}
+  .setrow{padding-top:5px; padding-bottom:5px;}
+  .setrow .setnum{font-family:var(--mono); font-size:13px; color:var(--text-dim); text-align:center;}
+  .setrow input{width:100%; background:var(--bg-elev); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:14px; padding:8px 6px; text-align:center;}
+  .setrow input::placeholder{color:var(--text-faint);}
+  .setrow input:focus{outline:none; border-color:var(--accent);}
+  .setrow .prevhint{font-size:9.5px; color:var(--text-faint); text-align:center; margin-top:2px; font-family:var(--mono);}
+  .checkbtn{width:30px; height:30px; border-radius:8px; border:1px solid var(--line); background:var(--bg-elev); color:var(--text-dim); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:15px;}
+  .checkbtn.done{background:var(--accent); border-color:var(--accent); color:#111; font-weight:700;}
+
+  .exfoot{padding:10px 16px 14px; border-top:1px solid var(--line); margin-top:6px;}
+  .exfoot .notebtn{font-size:12px; color:var(--text-dim); background:none; border:none; padding:0; cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px;}
+  .noteblock{font-size:12px; color:var(--text-dim); line-height:1.5; padding-top:8px; display:none;}
+  .noteblock.open{display:block;}
+  .noteblock b{color:var(--text);}
+
+  .warmupblock{margin:0 16px 4px; background:var(--card-2); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; font-size:12.5px; color:var(--text-dim); line-height:1.6;}
+  .warmupblock b{color:var(--text); display:block; margin-bottom:4px; font-family:var(--display); font-size:13px;}
+
+  .startbar{padding:16px; margin-top:8px;}
+  .videolink{font-size:12px; color:var(--accent); text-decoration:none; font-weight:600;}
+  .videolink:active{opacity:.7;}
+
+  .finishbar{padding:16px; margin-top:8px; display:flex; gap:10px;}
+  .finishbtn{flex:1; background:var(--accent); color:#111; border:none; padding:16px; border-radius:var(--radius); font-family:var(--display); font-weight:700; font-size:15px; cursor:pointer;}
+  .finishbtn:active{opacity:.85;}
+  .cancelbtn{background:var(--card-2); color:var(--danger); border:1px solid var(--line); padding:16px 18px; border-radius:var(--radius); font-family:var(--display); font-weight:600; font-size:14px; cursor:pointer;}
+  .cancelbtn:active{opacity:.8;}
+
+  /* ---------- calendar modal ---------- */
+  .calbtn{background:var(--card-2); border:1px solid var(--line); color:var(--text); font-size:12px; padding:8px 12px; border-radius:20px; cursor:pointer; display:flex; align-items:center; gap:6px;}
+  #calmodal{position:fixed; inset:0; background:rgba(10,12,13,.7); display:none; align-items:flex-end; justify-content:center; z-index:60;}
+  #calmodal.show{display:flex;}
+  .calsheet{width:100%; max-width:480px; background:var(--bg-elev); border-radius:20px 20px 0 0; border:1px solid var(--line); border-bottom:none; padding:18px 18px 28px; max-height:82vh; overflow-y:auto;}
+  .calhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .calhead h2{font-family:var(--display); font-size:17px; margin:0;}
+  .calclose{background:var(--card-2); border:1px solid var(--line); color:var(--text); width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:15px;}
+  .calnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .calnav button{background:var(--card-2); border:1px solid var(--line); color:var(--text); width:30px; height:30px; border-radius:8px; cursor:pointer;}
+  .calnav .monthlabel{font-family:var(--display); font-weight:600; font-size:14px;}
+  .calgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:10px;}
+  .calgrid .dow{font-size:10px; color:var(--text-faint); text-align:center; padding-bottom:4px; text-transform:uppercase;}
+  .calday{aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; font-family:var(--mono); font-size:12.5px; color:var(--text-dim); position:relative;}
+  .calday.trained{background:var(--card-2); color:var(--text); border:1px solid var(--accent-dim);}
+  .calday.trained::after{content:'✓'; position:absolute; bottom:2px; right:3px; font-size:8px; color:var(--accent);}
+  .calday.empty{visibility:hidden;}
+  .calsummary{font-size:12px; color:var(--text-dim); text-align:center; margin-top:8px;}
+
+  /* ---------- rest timer overlay ---------- */
+  #resttimer{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; background:var(--bg-elev); border-top:1px solid var(--line); padding:14px 20px 22px; display:none; align-items:center; gap:16px; z-index:50; box-shadow:0 -8px 24px rgba(0,0,0,.4);}
+  #resttimer.show{display:flex;}
+  .ringwrap{position:relative; width:56px; height:56px; flex-shrink:0;}
+  .ringwrap svg{transform:rotate(-90deg);}
+  .ringwrap .ringtext{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:13px; font-weight:700;}
+  .resttext{flex:1;}
+  .resttext .l1{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em;}
+  .resttext .l2{font-family:var(--display); font-size:15px; font-weight:600;}
+  .restbtns{display:flex; gap:8px;}
+  .restbtn{background:var(--card-2); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12px; padding:8px 10px; border-radius:8px; cursor:pointer;}
+
+  /* ---------- history ---------- */
+  .histlist{padding:0 16px; display:flex; flex-direction:column; gap:12px;}
+  .histcard{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .histcard .htop{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px;}
+  .histcard .hname{font-family:var(--display); font-weight:700; font-size:15.5px;}
+  .histcard .hdate{font-size:11.5px; color:var(--text-dim);}
+  .histcard .hstats{display:flex; gap:16px; margin:10px 0 12px;}
+  .histcard .hstats .v{font-family:var(--mono); font-size:14px; font-weight:600;}
+  .histcard .hstats .l{font-size:9.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em;}
+  .histcard .hexlist{display:flex; flex-direction:column; gap:4px;}
+  .histcard .hex{display:flex; justify-content:space-between; font-size:12px; color:var(--text-dim); padding:3px 0; border-top:1px dashed var(--line); padding-top:6px;}
+  .histcard .hex b{color:var(--text); font-weight:500;}
+  .empty{padding:60px 30px; text-align:center; color:var(--text-dim); font-size:13.5px; line-height:1.6;}
+  .empty .big{font-family:var(--display); font-size:16px; color:var(--text); margin-bottom:6px;}
+
+  /* ---------- bottom nav ---------- */
+  .bottomnav{position:fixed; left:0; right:0; bottom:0; max-width:480px; margin:0 auto; background:var(--bg-elev); border-top:1px solid var(--line); display:flex; z-index:40; padding-bottom:env(safe-area-inset-bottom);}
+  .navbtn{flex:1; padding:12px 0 10px; background:none; border:none; color:var(--text-faint); display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10.5px; cursor:pointer; font-family:var(--sans);}
+  .navbtn.active{color:var(--accent);}
+  .navbtn svg{width:20px; height:20px;}
+
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ HOME ============ -->
+  <section id="screen-home" class="screen active">
+    <div class="topbar">
+      <div>
+        <h1>Upper Lower</h1>
+        <div class="sub">Jonathan Costa · bulk · 5 a 6x/semana</div>
+      </div>
+    </div>
+    <div class="weeklabel">Treinos da semana</div>
+    <div class="daylist" id="daylist"></div>
+    <div class="divider-note">Versão 5 dias: pule o Upper C ou o Lower C. Sempre priorize manter o Lower B na semana.</div>
+  </section>
+
+  <!-- ============ SESSION ============ -->
+  <section id="screen-session" class="screen">
+    <div class="topbar">
+      <button class="back-btn" onclick="goHome()">‹ Treinos</button>
+    </div>
+    <div class="topbar" style="padding-top:0;">
+      <div>
+        <h1 id="sess-name">—</h1>
+        <div class="sub" id="sess-sub">—</div>
+      </div>
+    </div>
+    <div class="session-meta">
+      <div class="m"><div class="v" id="sess-timer">00:00</div><div class="l">Duração</div></div>
+      <div class="m"><div class="v" id="sess-volume">0 kg</div><div class="l">Volume</div></div>
+      <div class="m"><div class="v" id="sess-sets">0/0</div><div class="l">Séries</div></div>
+    </div>
+    <div class="warmupblock" id="sess-warmup"></div>
+    <div class="exlist" id="exlist"></div>
+    <div class="startbar" id="startbar">
+      <button class="finishbtn" onclick="beginSession()">▶ Iniciar treino</button>
+    </div>
+    <div class="finishbar" id="finishbar" style="display:none;">
+      <button class="cancelbtn" onclick="cancelWorkout()">Cancelar</button>
+      <button class="finishbtn" onclick="finishWorkout()">Finalizar treino</button>
+    </div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section id="screen-history" class="screen">
+    <div class="topbar">
+      <div>
+        <h1>Histórico</h1>
+        <div class="sub" id="hist-sub">carregando…</div>
+      </div>
+      <button class="calbtn" onclick="openCalendar()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        Calendário
+      </button>
+    </div>
+    <div class="histlist" id="histlist"></div>
+  </section>
+
+  <!-- rest timer -->
+  <div id="resttimer">
+    <div class="ringwrap">
+      <svg width="56" height="56" viewBox="0 0 56 56">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="#2a3034" stroke-width="5"/>
+        <circle id="ringprog" cx="28" cy="28" r="24" fill="none" stroke="#b9ff3c" stroke-width="5" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="0"/>
+      </svg>
+      <div class="ringtext" id="ringtext">60</div>
+    </div>
+    <div class="resttext">
+      <div class="l1">Descanso</div>
+      <div class="l2" id="rest-exname">—</div>
+    </div>
+    <div class="restbtns">
+      <button class="restbtn" onclick="adjustRest(15)">+15s</button>
+      <button class="restbtn" onclick="skipRest()">Pular</button>
+    </div>
+  </div>
+
+  <!-- calendar modal -->
+  <div id="calmodal">
+    <div class="calsheet">
+      <div class="calhead">
+        <h2>Calendário de treinos</h2>
+        <button class="calclose" onclick="closeCalendar()">✕</button>
+      </div>
+      <div class="calnav">
+        <button onclick="shiftCalMonth(-1)">‹</button>
+        <div class="monthlabel" id="cal-monthlabel">—</div>
+        <button onclick="shiftCalMonth(1)">›</button>
+      </div>
+      <div class="calgrid" id="cal-grid"></div>
+      <div class="calsummary" id="cal-summary"></div>
+    </div>
+  </div>
+
+  <!-- bottom nav -->
+  <nav class="bottomnav">
+    <button class="navbtn active" id="nav-home" onclick="showScreen('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      Treinos
+    </button>
+    <button class="navbtn" id="nav-history" onclick="showScreen('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Histórico
+    </button>
+  </nav>
+</div>
+
+<script>
+/* ============================================================
+   DADOS DO PROGRAMA
+   ============================================================ */
+const WORKOUTS = {
+  upperA: {
+    tag: "DIA 1", name: "Upper A", meta: "Peito e costas · Força",
+    warmup: "5 min de bike ou esteira leve. Mobilidade: rotação de ombro com bastão 2x10, mobilidade torácica em quatro apoios 2x8. Ativação: face pull leve 2x15.",
+    exercises: [
+      {name:"Supino reto barra", sets:4, reps:"6-8", rpe:"7-8", rir:"2-3", rest:150, note:"Escápulas retraídas, cotovelo a ~45°. Progressão: +2,5 a 5% quando bater RIR 2 em todas as séries por 2 sessões. Dor no ombro: trocar por supino em máquina neutra."},
+      {name:"Remada curvada barra", sets:4, reps:"6-8", rpe:"7-8", rir:"2-3", rest:150, note:"Puxe com o cotovelo, sem balançar o tronco. Dor: trocar por remada cavalinho apoiado."},
+      {name:"Supino inclinado halteres", sets:3, reps:"8-10", rpe:"8", rir:"2", rest:120},
+      {name:"Puxada pegada pronada aberta", sets:3, reps:"8-10", rpe:"8", rir:"2", rest:120},
+      {name:"Desenvolvimento militar em pé", sets:3, reps:"8-10", rpe:"8", rir:"2", rest:90},
+      {name:"Rosca direta barra reta", sets:3, reps:"10", rpe:"8", rir:"2", rest:60},
+      {name:"Fecho de pegada (farmer / barra fixa segurada)", sets:3, reps:"30-40s", rpe:"8", rir:"1-2", rest:60, note:"Trabalho direto de pegada, ligado ao seu handgrip fraco no laudo."}
+    ]
+  },
+  lowerA: {
+    tag: "DIA 2", name: "Lower A", meta: "Quadríceps · Agachamento",
+    warmup: "5 min de bike. Mobilidade: 90/90 de quadril 2x30s por lado, mobilidade de tornozelo na parede 2x10 por lado. Ativação: agachamento peso corporal 2x10.",
+    exercises: [
+      {name:"Agachamento livre barra", sets:4, reps:"6-8", rpe:"7-8", rir:"2-3", rest:150, note:"Quadril e joelho descem juntos, joelho segue a direção do pé. Dor no joelho: trocar por Smith ou leg press com pés mais altos."},
+      {name:"Leg press 45°", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:120},
+      {name:"Cadeira extensora", sets:3, reps:"12-15", rpe:"8-9", rir:"1-2", rest:60},
+      {name:"Cadeira flexora", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Panturrilha em pé", sets:4, reps:"12-15", rpe:"8", rir:"2", rest:60},
+      {name:"Prancha abdominal", sets:3, reps:"40-60s", rpe:"8", rir:"-", rest:45}
+    ]
+  },
+  upperB: {
+    tag: "DIA 3", name: "Upper B", meta: "Ombro e braços · Volume",
+    warmup: "5 min remo ergômetro ou elíptico. Mobilidade: rotação externa de ombro com elástico 2x15. Ativação: elevação lateral leve 2x15.",
+    exercises: [
+      {name:"Barra fixa ou puxada supinada", sets:4, reps:"6-10", rpe:"7-8", rir:"2-3", rest:120, note:"Dor no ombro: trocar por remada baixa neutra."},
+      {name:"Desenvolvimento halteres sentado", sets:3, reps:"8-10", rpe:"8", rir:"2", rest:90},
+      {name:"Elevação lateral", sets:4, reps:"12-15", rpe:"8-9", rir:"1-2", rest:60},
+      {name:"Rosca alternada halteres", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Tríceps corda na polia", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Rosca martelo", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Farmer carry (pegada)", sets:3, reps:"30-40m", rpe:"8", rir:"1-2", rest:60}
+    ]
+  },
+  lowerB: {
+    tag: "DIA 4", name: "Lower B", meta: "Posterior de cadeia · Terra e hip thrust",
+    warmup: "5 min de bike. Mobilidade: mobilidade de quadril e cat-camel 2x10. Ativação: ponte de glúteo peso corporal 2x12.",
+    exercises: [
+      {name:"Levantamento terra romeno", sets:4, reps:"6-8", rpe:"7-8", rir:"2-3", rest:150, note:"Quadril vai para trás primeiro, barra roça a perna, coluna neutra. Dor lombar: trocar por cadeira flexora e glúteo na polia baixa."},
+      {name:"Hip thrust barra", sets:4, reps:"8-10", rpe:"8", rir:"2", rest:120},
+      {name:"Afundo búlgaro halteres", sets:3, reps:"10/perna", rpe:"8", rir:"2", rest:90},
+      {name:"Cadeira flexora", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Panturrilha sentado", sets:4, reps:"12-15", rpe:"8", rir:"2", rest:60},
+      {name:"Prancha lateral", sets:3, reps:"30-40s/lado", rpe:"8", rir:"-", rest:45}
+    ]
+  },
+  upperC: {
+    tag: "DIA 5", name: "Upper C", meta: "Peito e costas · Volume/variação",
+    warmup: "5 min esteira. Mobilidade torácica 2x8. Ativação: remada elástico 2x15.",
+    exercises: [
+      {name:"Supino inclinado barra", sets:4, reps:"8-10", rpe:"7-8", rir:"2-3", rest:120},
+      {name:"Remada unilateral halteres", sets:4, reps:"8-10/lado", rpe:"8", rir:"2", rest:120},
+      {name:"Crucifixo halteres ou peck deck", sets:3, reps:"12-15", rpe:"8-9", rir:"1-2", rest:60, note:"Dor no ombro: trocar por cross over com cabo baixo."},
+      {name:"Pulldown pegada neutra", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Elevação lateral", sets:3, reps:"12-15", rpe:"8", rir:"2", rest:60},
+      {name:"Rosca scott", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60},
+      {name:"Tríceps testa", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:60}
+    ]
+  },
+  lowerC: {
+    tag: "DIA 6", name: "Lower C", meta: "Quadríceps e posterior · Misto",
+    warmup: "5 min de bike. Mobilidade de tornozelo e quadril. Ativação: agachamento peso corporal 2x10.",
+    exercises: [
+      {name:"Agachamento frontal ou hack machine", sets:3, reps:"8-10", rpe:"7-8", rir:"2-3", rest:120},
+      {name:"Stiff halteres", sets:3, reps:"10-12", rpe:"8", rir:"2", rest:90},
+      {name:"Leg press pés altos", sets:3, reps:"12-15", rpe:"8", rir:"2", rest:90},
+      {name:"Cadeira extensora", sets:3, reps:"12-15", rpe:"8-9", rir:"1-2", rest:60},
+      {name:"Panturrilha em pé", sets:3, reps:"15", rpe:"8", rir:"2", rest:60},
+      {name:"Prancha abdominal", sets:3, reps:"40-60s", rpe:"8", rir:"-", rest:45}
+    ]
+  }
+};
+
+/* ============================================================
+   ESTADO
+   ============================================================ */
+let currentKey = null;
+let sessionStart = null;
+let sessionTimerInt = null;
+let restInt = null;
+let restRemaining = 0;
+let restTotal = 60;
+let sessionLog = {}; // {exIndex: [{w,r,done}, ...]}
+let history = [];
+
+/* ============================================================
+   STORAGE (com fallback em memória)
+   ============================================================ */
+async function loadHistory(){
+  try{
+    if(window.storage){
+      const res = await window.storage.get('workout_history', false);
+      history = res && res.value ? JSON.parse(res.value) : [];
+    }else{
+      throw new Error('no window.storage');
+    }
+  }catch(e){
+    try{
+      const raw = localStorage.getItem('workout_history');
+      history = raw ? JSON.parse(raw) : [];
+    }catch(e2){
+      history = [];
+    }
+  }
+  renderHistory();
+}
+async function saveHistory(){
+  try{
+    if(window.storage){
+      await window.storage.set('workout_history', JSON.stringify(history), false);
+      return;
+    }
+    throw new Error('no window.storage');
+  }catch(e){
+    try{ localStorage.setItem('workout_history', JSON.stringify(history)); }catch(e2){ /* sem storage disponível */ }
+  }
+}
+
+/* ============================================================
+   RENDER: HOME
+   ============================================================ */
+function renderHome(){
+  const list = document.getElementById('daylist');
+  list.innerHTML = '';
+  Object.keys(WORKOUTS).forEach(key=>{
+    const w = WORKOUTS[key];
+    const card = document.createElement('div');
+    card.className = 'daycard';
+    card.onclick = ()=>openSession(key);
+    card.innerHTML = `
+      <div class="left">
+        <div class="tag">${w.tag}</div>
+        <div class="name">${w.name}</div>
+        <div class="meta">${w.meta} · ${w.exercises.length} exercícios</div>
+      </div>
+      <div class="arrow">›</div>`;
+    list.appendChild(card);
+  });
+}
+
+/* ============================================================
+   SESSION — PRÉVIA (ao clicar no dia, nada começa ainda)
+   ============================================================ */
+function openSession(key){
+  currentKey = key;
+  const w = WORKOUTS[key];
+  sessionLog = {};
+  document.getElementById('sess-name').textContent = w.name;
+  document.getElementById('sess-sub').textContent = w.tag + ' · ' + w.meta;
+  document.getElementById('sess-warmup').innerHTML = '<b>Aquecimento e ativação</b>' + w.warmup;
+
+  document.getElementById('sess-timer').textContent = '--:--';
+  document.getElementById('sess-volume').textContent = '—';
+  document.getElementById('sess-sets').textContent = `${w.exercises.reduce((a,e)=>a+e.sets,0)} previstas`;
+
+  renderExercisesPreview(w);
+
+  document.getElementById('startbar').style.display = 'flex';
+  document.getElementById('finishbar').style.display = 'none';
+  clearInterval(sessionTimerInt);
+  showScreen('session', true);
+}
+
+function renderExercisesPreview(w){
+  const exlist = document.getElementById('exlist');
+  exlist.innerHTML = '';
+  w.exercises.forEach((ex, i)=>{
+    const card = document.createElement('div');
+    card.className = 'excard';
+    card.innerHTML = `
+      <div class="exhead">
+        <div>
+          <div class="idx">Exercício ${i+1}</div>
+          <div class="exname">${ex.name}</div>
+          <div class="target">${ex.sets} séries · ${ex.reps} reps · RPE ${ex.rpe} · descanso ${formatRest(ex.rest)}</div>
+        </div>
+      </div>
+      <div class="exfoot" style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+        <a class="videolink" href="${videoSearchUrl(ex.name)}" target="_blank" rel="noopener">▶ ver execução</a>
+        ${ex.note ? `<button class="notebtn" onclick="toggleNote(${i})">observações</button>` : ''}
+      </div>
+      ${ex.note ? `<div class="noteblock" id="note-${i}" style="padding:8px 16px 12px;">${ex.note}</div>` : ''}
+    `;
+    exlist.appendChild(card);
+  });
+}
+
+function formatRest(sec){
+  if(sec>=60){
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return s ? `${m}:${String(s).padStart(2,'0')}` : `${m}min`;
+  }
+  return `${sec}s`;
+}
+
+function videoSearchUrl(name){
+  const q = encodeURIComponent(name.replace(/\(.*?\)/g,'').trim() + ' execução correta técnica');
+  return `https://www.youtube.com/results?search_query=${q}`;
+}
+
+/* ============================================================
+   SESSION — TREINO ATIVO (só começa ao apertar Iniciar treino)
+   ============================================================ */
+function beginSession(){
+  const w = WORKOUTS[currentKey];
+  sessionLog = {};
+
+  const exlist = document.getElementById('exlist');
+  exlist.innerHTML = '';
+  w.exercises.forEach((ex, i)=>{
+    sessionLog[i] = Array.from({length: ex.sets}, ()=>({w:'', r:'', done:false}));
+    const card = document.createElement('div');
+    card.className = 'excard';
+    let rows = '';
+    for(let s=0; s<ex.sets; s++){
+      rows += `
+        <div class="setrow" id="row-${i}-${s}">
+          <div class="setnum">${s+1}</div>
+          <input type="number" inputmode="decimal" placeholder="kg" oninput="updateLog(${i},${s},'w',this.value)">
+          <input type="text" inputmode="text" placeholder="${ex.reps}" oninput="updateLog(${i},${s},'r',this.value)">
+          <div class="setnum" style="font-size:10px;color:var(--text-faint)">RIR ${ex.rir}</div>
+          <button class="checkbtn" id="check-${i}-${s}" onclick="toggleSet(${i},${s})">✓</button>
+        </div>`;
+    }
+    card.innerHTML = `
+      <div class="exhead">
+        <div>
+          <div class="idx">Exercício ${i+1}</div>
+          <div class="exname">${ex.name}</div>
+          <div class="target">${ex.sets} séries · ${ex.reps} reps · RPE ${ex.rpe}</div>
+        </div>
+      </div>
+      <div class="setrow-head">
+        <div></div><div>Carga</div><div>Reps</div><div></div><div></div>
+      </div>
+      ${rows}
+      <div class="exfoot" style="display:flex; justify-content:space-between; align-items:center;">
+        <a class="videolink" href="${videoSearchUrl(ex.name)}" target="_blank" rel="noopener">▶ ver execução</a>
+        ${ex.note ? `<button class="notebtn" onclick="toggleNote(${i})">observações</button>` : ''}
+      </div>
+      ${ex.note ? `<div class="noteblock" id="note-${i}">${ex.note}</div>` : ''}
+    `;
+    exlist.appendChild(card);
+  });
+
+  sessionStart = Date.now();
+  clearInterval(sessionTimerInt);
+  sessionTimerInt = setInterval(updateSessionTimer, 1000);
+  updateSessionStats();
+
+  document.getElementById('startbar').style.display = 'none';
+  document.getElementById('finishbar').style.display = 'flex';
+}
+
+function toggleNote(i){
+  document.getElementById('note-'+i).classList.toggle('open');
+}
+
+function updateLog(i,s,field,val){
+  sessionLog[i][s][field] = val;
+  updateSessionStats();
+}
+
+function toggleSet(i,s){
+  const ex = WORKOUTS[currentKey].exercises[i];
+  const entry = sessionLog[i][s];
+  entry.done = !entry.done;
+  const btn = document.getElementById(`check-${i}-${s}`);
+  btn.classList.toggle('done', entry.done);
+  updateSessionStats();
+  if(entry.done){
+    startRest(ex.rest, ex.name);
+  }
+}
+
+function updateSessionStats(){
+  let totalSets=0, doneSets=0, volume=0;
+  Object.keys(sessionLog).forEach(i=>{
+    sessionLog[i].forEach(set=>{
+      totalSets++;
+      if(set.done){
+        doneSets++;
+        const w = parseFloat(set.w)||0;
+        const r = parseFloat(set.r)||0;
+        volume += w*r;
+      }
+    });
+  });
+  document.getElementById('sess-sets').textContent = `${doneSets}/${totalSets}`;
+  document.getElementById('sess-volume').textContent = `${Math.round(volume)} kg`;
+}
+
+function updateSessionTimer(){
+  const diff = Math.floor((Date.now()-sessionStart)/1000);
+  const m = String(Math.floor(diff/60)).padStart(2,'0');
+  const s = String(diff%60).padStart(2,'0');
+  document.getElementById('sess-timer').textContent = `${m}:${s}`;
+}
+
+/* ============================================================
+   REST TIMER
+   ============================================================ */
+function startRest(seconds, exName){
+  clearInterval(restInt);
+  restTotal = seconds;
+  restRemaining = seconds;
+  document.getElementById('rest-exname').textContent = exName;
+  document.getElementById('resttimer').classList.add('show');
+  updateRestRing();
+  restInt = setInterval(()=>{
+    restRemaining--;
+    if(restRemaining<=0){
+      clearInterval(restInt);
+      document.getElementById('resttimer').classList.remove('show');
+      return;
+    }
+    updateRestRing();
+  },1000);
+}
+function updateRestRing(){
+  document.getElementById('ringtext').textContent = restRemaining;
+  const circ = 150.8;
+  const pct = Math.max(0, restRemaining/restTotal);
+  document.getElementById('ringprog').style.strokeDashoffset = circ*(1-pct);
+}
+function adjustRest(sec){
+  restRemaining += sec;
+  restTotal = Math.max(restTotal, restRemaining);
+  updateRestRing();
+}
+function skipRest(){
+  clearInterval(restInt);
+  document.getElementById('resttimer').classList.remove('show');
+}
+
+/* ============================================================
+   CANCELAR TREINO
+   ============================================================ */
+function cancelWorkout(){
+  const hasProgress = Object.values(sessionLog).some(sets => sets.some(s => s.done || s.w || s.r));
+  const msg = hasProgress
+    ? 'Cancelar este treino? As séries que você já registrou nesta sessão serão perdidas e nada será salvo no histórico.'
+    : 'Cancelar este treino?';
+  if(confirm(msg)){
+    clearInterval(sessionTimerInt);
+    clearInterval(restInt);
+    document.getElementById('resttimer').classList.remove('show');
+    sessionLog = {};
+    goHome();
+  }
+}
+
+/* ============================================================
+   FINALIZAR TREINO
+   ============================================================ */
+async function finishWorkout(){
+  clearInterval(sessionTimerInt);
+  const w = WORKOUTS[currentKey];
+  const durationSec = Math.floor((Date.now()-sessionStart)/1000);
+  let volume=0, doneSets=0;
+  const exSummary = [];
+  Object.keys(sessionLog).forEach(i=>{
+    const ex = w.exercises[i];
+    let best = null;
+    sessionLog[i].forEach(set=>{
+      if(set.done){
+        doneSets++;
+        const wt = parseFloat(set.w)||0;
+        const rp = parseFloat(set.r)||0;
+        volume += wt*rp;
+        if(!best || wt > best.w) best = {w:wt, r:set.r};
+      }
+    });
+    if(best) exSummary.push({name: ex.name, best: `${best.w} kg × ${best.r}`});
+  });
+
+  if(doneSets===0){
+    alert('Marque pelo menos uma série concluída antes de finalizar.');
+    return;
+  }
+
+  history.unshift({
+    name: w.name,
+    tag: w.tag,
+    date: new Date().toISOString(),
+    duration: durationSec,
+    volume: Math.round(volume),
+    setsDone: doneSets,
+    exercises: exSummary
+  });
+  await saveHistory();
+  renderHistory();
+  goHome();
+}
+
+/* ============================================================
+   HISTÓRICO
+   ============================================================ */
+function renderHistory(){
+  const list = document.getElementById('histlist');
+  document.getElementById('hist-sub').textContent = history.length ? `${history.length} treinos registrados` : 'nenhum treino ainda';
+  if(!history.length){
+    list.innerHTML = `<div class="empty"><div class="big">Sem treinos registrados</div>Finalize um treino na aba Treinos para ele aparecer aqui.</div>`;
+    return;
+  }
+  list.innerHTML = '';
+  history.forEach(h=>{
+    const d = new Date(h.date);
+    const dateStr = d.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'short'});
+    const m = Math.floor(h.duration/60);
+    const card = document.createElement('div');
+    card.className = 'histcard';
+    card.innerHTML = `
+      <div class="htop">
+        <div class="hname">${h.name}</div>
+        <div class="hdate">${dateStr}</div>
+      </div>
+      <div class="hstats">
+        <div><div class="v">${m}min</div><div class="l">Duração</div></div>
+        <div><div class="v">${h.volume} kg</div><div class="l">Volume</div></div>
+        <div><div class="v">${h.setsDone}</div><div class="l">Séries</div></div>
+      </div>
+      <div class="hexlist">
+        ${h.exercises.map(e=>`<div class="hex"><span>${e.name}</span><b>${e.best}</b></div>`).join('')}
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+/* ============================================================
+   CALENDÁRIO
+   ============================================================ */
+let calViewDate = new Date();
+
+function openCalendar(){
+  calViewDate = new Date();
+  document.getElementById('calmodal').classList.add('show');
+  renderCalendar();
+}
+function closeCalendar(){
+  document.getElementById('calmodal').classList.remove('show');
+}
+function shiftCalMonth(delta){
+  calViewDate.setMonth(calViewDate.getMonth()+delta);
+  renderCalendar();
+}
+function renderCalendar(){
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  const monthLabel = calViewDate.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  document.getElementById('cal-monthlabel').textContent = monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1);
+
+  // dias treinados nesse mês (a partir do histórico)
+  const trainedDays = new Set();
+  history.forEach(h=>{
+    const d = new Date(h.date);
+    if(d.getFullYear()===year && d.getMonth()===month) trainedDays.add(d.getDate());
+  });
+
+  const firstDow = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['D','S','T','Q','Q','S','S'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'dow';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+  for(let i=0; i<firstDow; i++){
+    const el = document.createElement('div');
+    el.className = 'calday empty';
+    grid.appendChild(el);
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const el = document.createElement('div');
+    el.className = 'calday' + (trainedDays.has(day) ? ' trained' : '');
+    el.textContent = day;
+    grid.appendChild(el);
+  }
+  document.getElementById('cal-summary').textContent = `${trainedDays.size} treino${trainedDays.size===1?'':'s'} registrado${trainedDays.size===1?'':'s'} em ${monthLabel}`;
+}
+
+/* ============================================================
+   NAVEGAÇÃO
+   ============================================================ */
+function showScreen(name, fromSession){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('nav-home').classList.toggle('active', name==='home');
+  document.getElementById('nav-history').classList.toggle('active', name==='history');
+  if(name!=='session'){
+    clearInterval(sessionTimerInt);
+    clearInterval(restInt);
+    document.getElementById('resttimer').classList.remove('show');
+  }
+}
+function goHome(){
+  showScreen('home');
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderHome();
+loadHistory();
+</script>
+</body>
+</html>
