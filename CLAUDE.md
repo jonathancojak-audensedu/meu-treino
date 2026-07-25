@@ -13,7 +13,7 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 
 ## Regras obrigatórias
 
-1. **Sempre suba a `VERSION` no `sw.js`** ao alterar `index.html` ou `app.js`. Sem isso o service worker serve a versão antiga do cache e parece que a alteração não subiu. É o erro mais comum deste projeto.
+1. **Sempre suba a `VERSION` no `sw.js`** ao alterar `index.html` ou `app.js`. Sem isso o service worker serve a versão antiga do cache e parece que a alteração não subiu. É o erro mais comum deste projeto. Essa `VERSION` e a `version` do `package.json` têm propósitos independentes: uma invalida o cache do navegador, a outra versiona o pacote. Não tente mantê-las iguais.
 2. **Rode os testes antes de commitar:** `node tests/run-all.js`. Se algum falhar, corrija antes de subir.
 3. **Nunca use `localStorage` ou `sessionStorage` como armazenamento principal.** O padrão é IndexedDB através do objeto `Store`, com localStorage só como rede de segurança.
 4. **Todo texto visível é em português do Brasil**, com acentuação correta.
