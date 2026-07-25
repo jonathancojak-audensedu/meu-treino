@@ -1,0 +1,115 @@
+const { JSDOM } = require('jsdom');
+const fs = require('fs');
+const path = require('path').join(__dirname, '..') + '/';
+const html = fs.readFileSync(path + 'index.html', 'utf8');
+const js = fs.readFileSync(path + 'app.js', 'utf8');
+
+const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
+const w = dom.window;
+w.HTMLElement.prototype.scrollIntoView = function(){};
+w.scrollTo = function(){};
+w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
+w.eval(js);
+
+const MT = w.MT;
+const EXPERIENCIAS = ['iniciante','retomando','intermediario','avancado'];
+const DIAS = [2,3,4,5,6];
+const TEMPOS = [30,45,60,90];
+const LOCAIS = ['academia','simples','casa','corpo'];
+const OBJETIVOS = ['hipertrofia','forca','emagrecer','saude'];
+const DORES = [[], ['ombro'], ['joelho'], ['lombar'], ['ombro','joelho','lombar'], ['punho','cotovelo'], ['ombro','joelho','lombar','punho','cotovelo','quadril','tornozelo']];
+const PRIORIDADES = [[], ['peito'], ['gluteos','bracos']];
+const TETO = {30:4, 45:5, 60:6, 90:8};
+
+let combos = 0, problemas = [];
+function falha(perfil, msg){
+  problemas.push(JSON.stringify({exp:perfil.experiencia, dias:perfil.dias, tempo:perfil.tempo, local:perfil.local, obj:perfil.objetivo, dores:perfil.dores}) + ' -> ' + msg);
+}
+
+function verificar(perfil){
+  combos++;
+  const prog = MT.gerar(perfil);
+  const disp = MT.EQUIP[perfil.local];
+  const dores = perfil.dores.filter(d => d !== 'nenhuma');
+  const maxC = perfil.experiencia === 'iniciante' ? 2 : 3;
+
+  if(prog.length !== Number(perfil.dias)) return falha(perfil, 'dias gerados ' + prog.length);
+
+  prog.forEach(dia => {
+    if(!dia.items.length) return falha(perfil, dia.name + ' saiu vazio');
+    if(dia.items.length < 3) return falha(perfil, dia.name + ' com so ' + dia.items.length + ' exercicios');
+    if(dia.items.length > TETO[perfil.tempo]) return falha(perfil, dia.name + ' passou do teto de exercicios');
+    if(!dia.warmup || !dia.name || !dia.key) return falha(perfil, dia.name + ' sem metadados');
+
+    const vistos = [];
+    dia.items.forEach(it => {
+      const def = MT.EX[it.ex], meta = MT.META[it.ex];
+      if(!def) return falha(perfil, 'exercicio inexistente no catalogo: ' + it.ex);
+      if(!meta) return falha(perfil, 'exercicio sem metadados: ' + it.ex);
+      if(vistos.indexOf(it.ex) !== -1) return falha(perfil, 'exercicio repetido no mesmo dia: ' + it.ex);
+      vistos.push(it.ex);
+      if(!meta.e.every(eq => disp.indexOf(eq) !== -1)) return falha(perfil, it.ex + ' exige equipamento indisponivel em ' + perfil.local);
+      if(meta.s.some(art => dores.indexOf(art) !== -1)) return falha(perfil, it.ex + ' carrega articulacao com dor');
+      if(meta.c > maxC) return falha(perfil, it.ex + ' complexo demais para ' + perfil.experiencia);
+      if(!(it.sets >= 2 && it.sets <= 6)) return falha(perfil, it.ex + ' com ' + it.sets + ' series');
+      if(!it.reps || !it.rest || !it.rpe) return falha(perfil, it.ex + ' sem prescricao completa');
+      if(def.type === 'time' && !/s$/.test(it.reps)) return falha(perfil, it.ex + ' e por tempo mas reps=' + it.reps);
+    });
+
+    const est = MT.tempo(dia.items.map(i => ({sets:i.sets, rest:i.rest})));
+    if(est > perfil.tempo * 60 * 1.12) return falha(perfil, dia.name + ' estimado em ' + Math.round(est/60) + 'min contra ' + perfil.tempo);
+  });
+}
+
+console.log('== gerando programa para todas as combinacoes ==');
+for(const experiencia of EXPERIENCIAS)
+  for(const dias of DIAS)
+    for(const tempo of TEMPOS)
+      for(const local of LOCAIS)
+        for(const objetivo of OBJETIVOS)
+          verificar({experiencia, dias, tempo, local, objetivo, dores:[], prioridade:[], nome:'Teste'});
+
+console.log('  ' + combos + ' combinacoes basicas verificadas');
+
+const antes = combos;
+for(const dores of DORES)
+  for(const prioridade of PRIORIDADES)
+    for(const local of LOCAIS)
+      for(const dias of DIAS)
+        verificar({experiencia:'intermediario', dias, tempo:60, local, objetivo:'hipertrofia', dores, prioridade, nome:'Teste'});
+console.log('  ' + (combos - antes) + ' combinacoes com dor e prioridade verificadas');
+
+if(problemas.length){
+  console.log('\n' + problemas.length + ' PROBLEMAS (primeiros 15):');
+  problemas.slice(0,15).forEach(p => console.log('  ' + p));
+}else{
+  console.log('  nenhum problema estrutural encontrado');
+}
+
+console.log('\n== amostras reais ==');
+function amostra(titulo, perfil){
+  const prog = MT.gerar(perfil);
+  const vol = MT.volume(prog);
+  console.log('\n' + titulo);
+  prog.forEach(d => {
+    const est = Math.round(MT.tempo(d.items.map(i => ({sets:i.sets, rest:i.rest}))) / 60);
+    console.log('  ' + d.name + ' (~' + est + 'min): ' + d.items.map(i => MT.EX[i.ex].name + ' ' + i.sets + 'x' + i.reps).join(' | '));
+  });
+  const top = Object.keys(vol).filter(k => vol[k] >= 4).sort((a,b)=>vol[b]-vol[a]).slice(0,6);
+  console.log('  volume semanal: ' + top.map(k => k + ' ' + vol[k]).join(', '));
+}
+
+amostra('INICIANTE, 3 dias, 45min, so peso corporal, emagrecer',
+  {experiencia:'iniciante', dias:3, tempo:45, local:'corpo', objetivo:'emagrecer', dores:[], prioridade:[], nome:'A'});
+
+amostra('INTERMEDIARIO, 4 dias, 60min, academia completa, hipertrofia, dor no ombro',
+  {experiencia:'intermediario', dias:4, tempo:60, local:'academia', objetivo:'hipertrofia', dores:['ombro'], prioridade:[], nome:'B'});
+
+amostra('AVANCADO, 6 dias, 90min, academia completa, forca, prioridade em costas',
+  {experiencia:'avancado', dias:6, tempo:90, local:'academia', objetivo:'forca', dores:[], prioridade:['costas'], nome:'C'});
+
+amostra('RETOMANDO, 2 dias, 30min, em casa com halteres, saude',
+  {experiencia:'retomando', dias:2, tempo:30, local:'casa', objetivo:'saude', dores:['lombar'], prioridade:[], nome:'D'});
+
+console.log('\n' + (problemas.length ? problemas.length + ' FALHAS' : 'todas as verificacoes passaram'));
+process.exit(0);
