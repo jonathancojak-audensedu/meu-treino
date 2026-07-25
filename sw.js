@@ -1,7 +1,7 @@
 /* Service worker do Meu Treino.
    Suba o numero da versao sempre que alterar index.html, app.js ou o manifest.
    Caminhos relativos para funcionar em subpasta do GitHub Pages. */
-const VERSION = 'meu-treino-v6';
+const VERSION = 'meu-treino-v7';
 
 const SHELL = [
   './',

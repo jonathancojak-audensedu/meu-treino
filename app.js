@@ -209,6 +209,7 @@ let overrides = {};
 let customEx = {};
 let session = null;
 let previewKey = null;
+let editState = null;
 let durationInt = null, restInt = null;
 let wakeLock = null, audioCtx = null, silentAudio = null;
 let scheduledBeeps = [];
@@ -257,6 +258,7 @@ function programItems(key){
   const base = overrides[key] || (byKey(key) ? byKey(key).items : []);
   return base.map(it => Object.assign({}, it));
 }
+function shapeOf(i){ return {ex:i.ex, sets:i.sets, reps:i.reps, rpe:i.rpe, rir:i.rir, rest:i.rest}; }
 function newUid(){ return 'e' + (uidSeq++) + Math.random().toString(36).slice(2, 6); }
 function unitOf(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : 'reps'; }
 function fmtRest(sec){
@@ -395,6 +397,7 @@ function atualizarCabecalhoHome(){
    ------------------------------------------------------------------------- */
 function openPreview(key){
   previewKey = key;
+  editState = null;
   const w = byKey(key);
   const items = programItems(key);
   $('sess-name').textContent = w.name;
@@ -426,8 +429,10 @@ function openPreview(key){
   }).join('') +
   '<div class="previewnote">Depois de iniciar você pode trocar, reordenar, incluir e excluir exercícios.</div>';
 
-  $('startbar').style.display = 'block';
+  $('btn-editprog').style.display = w ? 'block' : 'none';
+  $('startbar').style.display = 'flex';
   $('finishbar').style.display = 'none';
+  $('editbar').style.display = 'none';
   showScreen('session');
 }
 function summarizeSets(sets, type){
@@ -435,6 +440,170 @@ function summarizeSets(sets, type){
   return sets.slice(0, 4).map(s => s.w
     ? s.w + 'kg x ' + s.r + (u === 'reps' ? '' : u)
     : s.r + (u === 'reps' ? ' reps' : u)).join(' · ');
+}
+
+/* -------------------------------------------------------------------------
+   10b. EDIÇÃO DO PROGRAMA FORA DO TREINO
+   ------------------------------------------------------------------------- */
+function openEdit(key){
+  const w = byKey(key);
+  if(!w) return;
+  editState = {
+    key: key,
+    original: programItems(key).map(shapeOf),
+    items: programItems(key).map(it => Object.assign({uid: newUid()}, it))
+  };
+  $('sess-name').textContent = w.name;
+  $('sess-sub').textContent = w.tag + ' · ' + w.meta;
+  $('sess-warmup').style.display = 'none';
+  $('sess-volume').textContent = '0 kg';
+  $('startbar').style.display = 'none';
+  $('finishbar').style.display = 'none';
+  $('editbar').style.display = 'flex';
+  renderEdit();
+  showScreen('session');
+}
+
+function renderEdit(){
+  const items = editState.items;
+  $('exlist').innerHTML = items.map((it, i) => editCardHTML(it, i, items.length)).join('') +
+    '<button class="addex" data-addex="1">+ adicionar exercício</button>';
+  $('sess-timer').textContent = '~' + Math.round(tempoEstimado(items) / 60) + 'min';
+  $('sess-sets').textContent = items.reduce((a, e) => a + e.sets, 0) + ' previstas';
+}
+
+function editCardHTML(item, pos, total){
+  const def = defOf(item.ex);
+  return '<div class="excard" id="card-' + item.uid + '" data-uid="' + item.uid + '">' +
+    '<div class="swipehint" aria-hidden="true">excluir</div>' +
+    '<div class="cardinner">' +
+    '<div class="exhead" style="cursor:default">' +
+      '<span class="exmain">' +
+        '<span class="idx">Exercício ' + (pos+1) + '</span>' +
+        '<span class="exname">' + esc(def.name) + '</span>' +
+        '<span class="target">RPE ' + item.rpe + ' · RIR ' + item.rir + '</span>' +
+      '</span>' +
+    '</div>' +
+    '<div class="exbody">' +
+      '<div class="editrow">' +
+        '<div class="editlabel">Séries</div>' +
+        '<div class="editstepper">' +
+          '<button data-delset="' + item.uid + '" aria-label="Diminuir séries">−</button>' +
+          '<span class="editval">' + item.sets + '</span>' +
+          '<button data-addset="' + item.uid + '" aria-label="Aumentar séries">+</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="editrow">' +
+        '<div class="editlabel">Faixa de repetições</div>' +
+        '<input class="editreps" type="text" value="' + esc(item.reps) + '" data-editreps="' + item.uid + '" aria-label="Faixa de repetições de ' + esc(def.name) + '">' +
+      '</div>' +
+      '<div class="editrow">' +
+        '<div class="editlabel">Descanso</div>' +
+        '<div class="editstepper">' +
+          '<button data-restep="' + item.uid + '|-15" aria-label="Diminuir descanso em 15 segundos">−</button>' +
+          '<span class="editval">' + fmtRest(item.rest) + '</span>' +
+          '<button data-restep="' + item.uid + '|15" aria-label="Aumentar descanso em 15 segundos">+</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="exfoot">' +
+        '<button class="minibtn" data-swap="' + item.uid + '">trocar</button>' +
+        (pos > 0 ? '<button class="minibtn" data-move="' + item.uid + '|-1" aria-label="Mover para cima">↑</button>' : '') +
+        (pos < total - 1 ? '<button class="minibtn" data-move="' + item.uid + '|1" aria-label="Mover para baixo">↓</button>' : '') +
+        (total > 1 ? '<button class="minibtn danger" data-remove="' + item.uid + '">excluir</button>' : '') +
+        '<a class="minibtn link" href="' + videoUrl(def.name) + '" target="_blank" rel="noopener">execução</a>' +
+        (def.note ? '<button class="minibtn" data-note="' + item.uid + '">observações</button>' : '') +
+      '</div>' +
+      (def.note ? '<div class="noteblock" id="note-' + item.uid + '">' + esc(def.note) + '</div>' : '') +
+    '</div></div></div>';
+}
+
+function editItemByUid(uid){ return editState.items.find(i => i.uid === uid); }
+function editPosOf(uid){ return editState.items.findIndex(i => i.uid === uid); }
+
+function editMoveItem(uid, delta){
+  const pos = editPosOf(uid);
+  const target = pos + delta;
+  if(target < 0 || target >= editState.items.length) return;
+  const [it] = editState.items.splice(pos, 1);
+  editState.items.splice(target, 0, it);
+  renderEdit();
+  const card = $('card-' + uid);
+  if(card && card.scrollIntoView) card.scrollIntoView({behavior:'auto', block:'center'});
+}
+
+function editRemoveItem(uid){
+  if(editState.items.length <= 1){ toast('Pelo menos um exercício é necessário'); return; }
+  const pos = editPosOf(uid);
+  if(pos === -1) return;
+  editState.items.splice(pos, 1);
+  renderEdit();
+}
+
+async function editSwapExercise(uid){
+  const item = editItemByUid(uid);
+  const def = defOf(item.ex);
+  const choice = await pickExercise('Trocar exercício', def.alts || [], def.name);
+  if(!choice) return;
+  item.ex = choice;
+  renderEdit();
+}
+
+async function editAddExercise(){
+  const choice = await pickExercise('Adicionar exercício', []);
+  if(!choice) return;
+  const def = defOf(choice);
+  editState.items.push({
+    uid: newUid(), ex: choice, sets: 3,
+    reps: def.type === 'time' ? '30-45s' : def.type === 'dist' ? '30m' : '8-12',
+    rpe: '8', rir: '2', rest: 90
+  });
+  renderEdit();
+  const items = editState.items;
+  const card = $('card-' + items[items.length - 1].uid);
+  if(card && card.scrollIntoView) card.scrollIntoView({behavior:'auto', block:'center'});
+}
+
+function editAddSet(uid){
+  const item = editItemByUid(uid);
+  item.sets++;
+  renderEdit();
+}
+function editDelSet(uid){
+  const item = editItemByUid(uid);
+  if(item.sets <= 1) return;
+  item.sets--;
+  renderEdit();
+}
+
+function editRestStep(uid, delta){
+  const item = editItemByUid(uid);
+  item.rest = Math.max(15, item.rest + delta);
+  renderEdit();
+}
+
+async function cancelEdit(){
+  const changed = JSON.stringify(editState.items.map(shapeOf)) !== JSON.stringify(editState.original);
+  if(changed){
+    const ok = await askConfirm({
+      title: 'Descartar as alterações?',
+      text: 'O que você mudou nesta edição não será salvo.',
+      confirmLabel: 'Descartar',
+      danger: true
+    });
+    if(!ok) return;
+  }
+  editState = null;
+  renderHome();
+  showScreen('home');
+}
+
+async function saveEdit(){
+  overrides[editState.key] = editState.items.map(shapeOf);
+  await Store.set('overrides', overrides);
+  editState = null;
+  renderHome();
+  showScreen('home');
+  toast('Montagem salva como padrão');
 }
 
 /* -------------------------------------------------------------------------
@@ -502,6 +671,7 @@ function resumeSession(){
 }
 
 function renderSession(){
+  editState = null;
   $('exlist').innerHTML = session.items.map((it, i) => cardHTML(it, i)).join('') +
     '<button class="addex" data-addex="1">+ adicionar exercício</button>' +
     (session.items.length
@@ -509,6 +679,7 @@ function renderSession(){
       : '<div class="previewnote">Nenhum exercício ainda. Toque acima para incluir o primeiro.</div>');
   $('startbar').style.display = 'none';
   $('finishbar').style.display = 'flex';
+  $('editbar').style.display = 'none';
   updateStats();
   showScreen('session');
 }
@@ -756,6 +927,11 @@ function releaseWake(){
    ------------------------------------------------------------------------- */
 function onInput(e){
   const el = e.target;
+  if(editState && el.dataset && el.dataset.editreps !== undefined){
+    const item = editItemByUid(el.dataset.editreps);
+    if(item && el.value.trim()) item.reps = el.value;
+    return;
+  }
   if(!el.dataset || el.dataset.f === undefined || !session) return;
   const uid = el.dataset.uid, s = +el.dataset.s;
   if(!session.log[uid]) session.log[uid] = [];
@@ -982,6 +1158,7 @@ function hasProgress(){
 }
 
 function leaveSession(){
+  if(editState) return cancelEdit();
   if(!session || !session.startedAt){ showScreen('home'); return; }
   toast('Treino continua rodando. Retome pela tela de treinos.');
   renderHome();
@@ -1055,9 +1232,8 @@ async function finishWorkout(){
   };
   const previous = history.find(h => h.key === session.key);
 
-  const shape = i => ({ex:i.ex, sets:i.sets, reps:i.reps, rpe:i.rpe, rir:i.rir, rest:i.rest});
-  const currentShape = session.items.map(shape);
-  const defaultShape = programItems(session.key).map(shape);
+  const currentShape = session.items.map(shapeOf);
+  const defaultShape = programItems(session.key).map(shapeOf);
   const changed = !!byKey(session.key) && JSON.stringify(currentShape) !== JSON.stringify(defaultShape);
   const finishedKey = session.key;
 
@@ -1344,6 +1520,24 @@ $('exlist').addEventListener('click', e => {
   const t = e.target;
   const note = t.closest('[data-note]');
   if(note){ const n = $('note-' + note.dataset.note); if(n) n.classList.toggle('open'); return; }
+
+  if(editState){
+    if(t.closest('[data-addex]')) return editAddExercise();
+    const esw = t.closest('[data-swap]');
+    if(esw) return editSwapExercise(esw.dataset.swap);
+    const eadd = t.closest('[data-addset]');
+    if(eadd) return editAddSet(eadd.dataset.addset);
+    const edel = t.closest('[data-delset]');
+    if(edel) return editDelSet(edel.dataset.delset);
+    const emv = t.closest('[data-move]');
+    if(emv){ const p = emv.dataset.move.split('|'); return editMoveItem(p[0], +p[1]); }
+    const erm = t.closest('[data-remove]');
+    if(erm) return editRemoveItem(erm.dataset.remove);
+    const erest = t.closest('[data-restep]');
+    if(erest){ const p = erest.dataset.restep.split('|'); return editRestStep(p[0], +p[1]); }
+    return;
+  }
+
   if(!session) return;
   if(t.closest('[data-addex]')) return addExercise();
   const chk = t.closest('[data-check]');
@@ -1372,7 +1566,7 @@ $('exlist').addEventListener('click', e => {
 let swipe = null, suppressClickUntil = 0;
 $('exlist').addEventListener('touchstart', e => {
   const card = e.target.closest('.excard[data-uid]');
-  if(!card || e.target.closest('input, a, .checkbtn, .stepper, .minibtn, .addex')) return;
+  if(!card || e.target.closest('input, a, .checkbtn, .stepper, .editstepper, .minibtn, .addex')) return;
   swipe = {card:card, x:e.touches[0].clientX, y:e.touches[0].clientY, dx:0, active:false};
 }, {passive:true});
 $('exlist').addEventListener('touchmove', e => {
@@ -1396,7 +1590,8 @@ $('exlist').addEventListener('touchend', () => {
   if(swipe.active) suppressClickUntil = Date.now() + 400;
   const inner = swipe.card.querySelector('.cardinner');
   if(swipe.active && swipe.dx < -100){
-    removeItem(swipe.card.dataset.uid);
+    if(editState) editRemoveItem(swipe.card.dataset.uid);
+    else removeItem(swipe.card.dataset.uid);
   }else if(inner){
     inner.style.transform = '';
     swipe.card.classList.remove('willdelete');
@@ -1420,6 +1615,9 @@ $('btn-begin').onclick = beginSession;
 $('btn-cancel').onclick = cancelWorkout;
 $('btn-finish').onclick = finishWorkout;
 $('session-back').onclick = leaveSession;
+$('btn-editprog').onclick = () => openEdit(previewKey);
+$('btn-canceledit').onclick = cancelEdit;
+$('btn-saveedit').onclick = saveEdit;
 $('btn-sum-done').onclick = () => { showScreen('home'); renderHome(); };
 $('rest-add').onclick = () => addRest(15);
 $('rest-skip').onclick = skipRest;
