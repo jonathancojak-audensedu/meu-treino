@@ -305,6 +305,69 @@ function bestEver(exId){
   return best;
 }
 
+/* dupla progressão: sobe a carga quando fecha o topo da faixa, desce quando
+   fica abaixo do piso em duas sessões seguidas, senão mantém e busca mais reps */
+const REGIAO_POR_PADRAO = {
+  emp_h:'superior', emp_v:'superior', pux_h:'superior', pux_v:'superior',
+  lateral:'superior', biceps:'superior', triceps:'superior',
+  joelho:'inferior', quadril:'inferior', panturrilha:'inferior'
+};
+function regiaoDoExercicio(exId){
+  const meta = META[exId];
+  return (meta && REGIAO_POR_PADRAO[meta.p]) || 'superior';
+}
+function ultimasSessoesDoExercicio(exId){
+  const out = [];
+  for(const h of history){
+    const found = (h.exercises || []).find(e => e.exId === exId);
+    if(found && found.sets && found.sets.length) out.push({date: h.date, sets: found.sets});
+    if(out.length >= 2) break;
+  }
+  return out;
+}
+function parseFaixaReps(reps){
+  const nums = String(reps).match(/\d+/g);
+  if(!nums) return null;
+  const piso = parseInt(nums[0], 10);
+  const topo = nums[1] ? parseInt(nums[1], 10) : piso;
+  return {piso, topo};
+}
+function arredondar2_5(n){ return Math.round(n / 2.5) * 2.5; }
+function sugerirCarga(historicoDoExercicio, prescricao){
+  if(!prescricao || prescricao.type !== 'reps') return null;
+  if(!historicoDoExercicio || !historicoDoExercicio.length) return null;
+  const faixa = parseFaixaReps(prescricao.reps);
+  if(!faixa) return null;
+
+  const ultima = historicoDoExercicio[0];
+  if(!ultima.sets || !ultima.sets.length) return null;
+  const pesos = ultima.sets.map(s => parseFloat(s.w));
+  const repsFeitos = ultima.sets.map(s => parseFloat(s.r));
+  if(pesos.some(isNaN) || repsFeitos.some(isNaN)) return null;
+
+  const pesoAnterior = pesos[pesos.length - 1];
+  const repMinima = Math.min(...repsFeitos);
+
+  if(repsFeitos.every(r => r >= faixa.topo)){
+    const regiaoKg = prescricao.regiao === 'inferior' ? 5 : 2.5;
+    const incremento = Math.max(regiaoKg, pesoAnterior * 0.05);
+    return {tipo:'subir', pesoAnterior:pesoAnterior, cargaSugerida:arredondar2_5(pesoAnterior + incremento), repsFeitas:repMinima};
+  }
+
+  const todasAbaixoDoPiso = sessao => sessao.sets.every(s => (parseFloat(s.r) || 0) < faixa.piso);
+  if(historicoDoExercicio.length >= 2 && todasAbaixoDoPiso(historicoDoExercicio[0]) && todasAbaixoDoPiso(historicoDoExercicio[1])){
+    return {tipo:'descer', pesoAnterior:pesoAnterior, cargaSugerida:arredondar2_5(pesoAnterior * 0.925), repsFeitas:repMinima};
+  }
+
+  return {tipo:'manter', pesoAnterior:pesoAnterior, cargaSugerida:pesoAnterior, repsFeitas:repMinima};
+}
+function formatarSugestao(sug){
+  const fmt = n => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ','));
+  if(sug.tipo === 'subir') return 'sugestão: ' + fmt(sug.cargaSugerida) + ' kg, você fechou ' + sug.repsFeitas + ' em todas as séries da última vez';
+  if(sug.tipo === 'descer') return 'sugestão: reduzir para ' + fmt(sug.cargaSugerida) + ' kg, faixa não foi atingida em duas sessões seguidas';
+  return 'sugestão: manter ' + fmt(sug.cargaSugerida) + ' kg e buscar mais repetições';
+}
+
 /* -------------------------------------------------------------------------
    8. NAVEGAÇÃO
    ------------------------------------------------------------------------- */
@@ -411,6 +474,7 @@ function openPreview(key){
   $('exlist').innerHTML = items.map((it, i) => {
     const def = defOf(it.ex);
     const last = lastPerformance(it.ex);
+    const sug = sugerirCarga(ultimasSessoesDoExercicio(it.ex), {reps: it.reps, type: def.type, regiao: regiaoDoExercicio(it.ex)});
     return '<div class="excard">' +
       '<div class="cardinner">' +
       '<div class="exhead" style="cursor:default">' +
@@ -418,6 +482,7 @@ function openPreview(key){
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + it.sets + ' séries · ' + esc(it.reps) + ' · RPE ' + it.rpe + ' · descanso ' + fmtRest(it.rest) + '</span>' +
         (last ? '<span class="exsummary">última vez: ' + summarizeSets(last.sets, def.type) + '</span>' : '') +
+        (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
         '</span>' +
       '</div>' +
       '<div class="exfoot">' +
@@ -688,6 +753,7 @@ function cardHTML(item, pos){
   const def = defOf(item.ex);
   const log = session.log[item.uid] || [];
   const last = lastPerformance(item.ex);
+  const sug = sugerirCarga(ultimasSessoesDoExercicio(item.ex), {reps: item.reps, type: def.type, regiao: regiaoDoExercicio(item.ex)});
   const u = unitOf(def.type);
   const doneCount = log.slice(0, item.sets).filter(s => s.done).length;
   const allDone = doneCount >= item.sets && item.sets > 0;
@@ -733,6 +799,7 @@ function cardHTML(item, pos){
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + esc(item.reps) + ' · RPE ' + item.rpe + ' · RIR ' + item.rir + ' · ' + fmtRest(item.rest) + '</span>' +
+        (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
         (allDone && summary ? '<span class="exsummary">' + summary + '</span>' : '') +
       '</span>' +
       '<span class="prog">' + doneCount + '/' + item.sets + '</span>' +
@@ -2517,7 +2584,7 @@ window.MT = {
   get profile(){ return profile; },
   get program(){ return PROGRAM; },
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
-  gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado
+  gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga
 };
 
 boot();
