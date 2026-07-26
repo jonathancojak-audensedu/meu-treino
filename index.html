@@ -48,7 +48,7 @@
   @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
 
   /* ---------- top bar ---------- */
-  .topbar{padding:18px 20px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .topbar{padding:calc(18px + env(safe-area-inset-top)) 20px 10px; display:flex; align-items:center; justify-content:space-between; gap:12px;}
   .topbar h1{font-family:var(--display); font-size:21px; font-weight:700; margin:0; letter-spacing:-0.01em;}
   .topbar .sub{font-size:12.5px; color:var(--text-dim); margin-top:3px;}
   .back-btn{background:none;border:none;color:var(--text); font-size:15px; display:flex; align-items:center; gap:6px; padding:10px 8px; margin-left:-8px; min-height:44px; cursor:pointer;}
@@ -247,7 +247,7 @@
   .calnav{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
   .calnav button{background:var(--card-2); border:1px solid var(--line); color:var(--text); width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:16px;}
   .calnav .monthlabel{font-family:var(--display); font-weight:600; font-size:15px;}
-  .calgrid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:12px;}
+  .calgrid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; margin-bottom:12px;}
   .calgrid .dow{font-size:10.5px; color:var(--text-faint); text-align:center; padding-bottom:4px; text-transform:uppercase;}
   .calday{aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:10px; font-family:var(--mono); font-size:13px; color:var(--text-dim); position:relative;}
   .calday.upper{background:rgba(185,255,60,.16); color:var(--text); border:1px solid var(--accent-dim);}
