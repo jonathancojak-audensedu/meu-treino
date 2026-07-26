@@ -263,18 +263,31 @@
   .calsummary{font-size:12.5px; color:var(--text-dim); text-align:center;}
 
   /* ---------- rest timer ---------- */
-  #resttimer{position:fixed; left:0; right:0; bottom:calc(var(--navh) + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; background:var(--bg-elev); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:12px 16px; display:none; align-items:center; gap:14px; z-index:50; box-shadow:0 -8px 24px rgba(0,0,0,.45);}
+  #resttimer{position:fixed; left:0; right:0; bottom:calc(var(--navh) + env(safe-area-inset-bottom)); max-width:520px; margin:0 auto; background:var(--bg-elev); border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:none; flex-direction:column; z-index:50; box-shadow:0 -8px 24px rgba(0,0,0,.45);}
   #resttimer.show{display:flex;}
   #resttimer.ending{border-top-color:var(--accent); box-shadow:0 -8px 30px rgba(185,255,60,.18);}
-  #resttimer.ending .ringtext{color:var(--accent);}
-  .ringwrap{position:relative; width:54px; height:54px; flex-shrink:0;}
-  .ringwrap svg{transform:rotate(-90deg);}
-  .ringwrap .ringtext{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:14px; font-weight:700;}
+  #resttimer.ending .restnum{color:var(--accent); transform:scale(1.08);}
+  #resttimer.ending .restbarfill{background:var(--accent);}
+
+  .restbarwrap{width:100%; height:4px; background:var(--line); flex-shrink:0; overflow:hidden;}
+  .restbarfill{height:100%; width:100%; background:var(--accent-dim); transition:width .2s linear, background .2s ease;}
+
+  .resttap{display:flex; align-items:center; gap:14px; width:100%; background:none; border:none; padding:12px 16px; cursor:pointer; text-align:left; color:inherit; font-family:inherit;}
+  .restnum{font-family:var(--mono); font-weight:700; font-size:48px; line-height:1; min-width:1.9em; text-align:center; transition:transform .15s ease, color .15s ease; flex-shrink:0;}
   .resttext{flex:1; min-width:0;}
   .resttext .l1{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em;}
   .resttext .l2{font-family:var(--display); font-size:14.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .restbtns{display:flex; gap:8px;}
-  .restbtn{background:var(--card-2); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12.5px; padding:0 12px; height:44px; border-radius:10px; cursor:pointer;}
+  .restbtns{display:flex; gap:8px; padding:0 16px 14px;}
+  .restbtn{flex:1; background:var(--card-2); border:1px solid var(--line); color:var(--text); font-family:var(--mono); font-size:12.5px; padding:0 12px; height:44px; border-radius:10px; cursor:pointer;}
+
+  #resttimer.expanded{position:fixed; inset:0; bottom:0; max-width:none; margin:0; z-index:200; justify-content:flex-end;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); border:none; box-shadow:none;}
+  #resttimer.expanded .resttap{flex:1; flex-direction:column; justify-content:center; gap:28px; padding:24px;}
+  #resttimer.expanded .restnum{font-size:min(28vw, 160px);}
+  #resttimer.expanded .resttext{flex:none; text-align:center;}
+  #resttimer.expanded .resttext .l2{white-space:normal; font-size:18px;}
+  #resttimer.expanded .restbarwrap{width:80%; max-width:400px; height:8px; border-radius:4px; margin:0 auto;}
+  #resttimer.expanded .restbtns{padding:20px 24px calc(24px + env(safe-area-inset-bottom));}
 
   /* ---------- toast ---------- */
   #toast{position:fixed; left:16px; right:16px; bottom:calc(var(--navh) + 76px); max-width:488px; margin:0 auto; background:#242b2e; border:1px solid var(--line-strong); border-radius:12px; padding:13px 16px; font-size:13.5px; z-index:90; display:none; box-shadow:0 8px 24px rgba(0,0,0,.5);}
@@ -500,18 +513,16 @@
 
   <!-- rest timer -->
   <div id="resttimer" role="timer" aria-live="off">
-    <div class="ringwrap">
-      <svg width="54" height="54" viewBox="0 0 56 56" aria-hidden="true">
-        <circle cx="28" cy="28" r="24" fill="none" stroke="#2a3034" stroke-width="5"/>
-        <circle id="ringprog" cx="28" cy="28" r="24" fill="none" stroke="#b9ff3c" stroke-width="5" stroke-linecap="round" stroke-dasharray="150.8" stroke-dashoffset="0"/>
-      </svg>
-      <div class="ringtext" id="ringtext">60</div>
-    </div>
-    <div class="resttext">
-      <div class="l1">Descanso</div>
-      <div class="l2" id="rest-exname"></div>
-    </div>
+    <div class="restbarwrap"><div class="restbarfill" id="restbarfill"></div></div>
+    <button class="resttap" id="rest-tap" aria-label="Expandir ou recolher o descanso em tela cheia">
+      <div class="restnum" id="ringtext">60</div>
+      <div class="resttext">
+        <div class="l1" id="rest-next">Descanso</div>
+        <div class="l2" id="rest-exname"></div>
+      </div>
+    </button>
     <div class="restbtns">
+      <button class="restbtn" id="rest-sub">-15s</button>
       <button class="restbtn" id="rest-add">+15s</button>
       <button class="restbtn" id="rest-skip">Pular</button>
     </div>

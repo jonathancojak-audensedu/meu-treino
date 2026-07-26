@@ -223,6 +223,7 @@ let session = null;
 let previewKey = null;
 let editState = null;
 let durationInt = null, restInt = null;
+let restExpanded = false;
 let wakeLock = null, audioCtx = null, silentAudio = null;
 let scheduledBeeps = [];
 let deferredInstall = null;
@@ -254,6 +255,7 @@ function saveSession(immediate){
 }
 async function clearSession(){
   session = null;
+  restExpanded = false;
   clearTimeout(saveTimer);
   await Store.del('active_session');
   updateTrainingBadge();
@@ -892,8 +894,8 @@ function tickDuration(){
    O bipe é agendado no relógio do AudioContext, então toca na hora certa
    mesmo se o navegador congelar os temporizadores em segundo plano.
    ------------------------------------------------------------------------- */
-function startRest(seconds, label){
-  session.rest = {endsAt: Date.now() + seconds * 1000, total: seconds, label: label};
+function startRest(seconds, label, proxima){
+  session.rest = {endsAt: Date.now() + seconds * 1000, total: seconds, label: label, proxima: proxima || ''};
   saveSession();
   scheduleBeep(seconds);
   startRestLoop();
@@ -901,6 +903,7 @@ function startRest(seconds, label){
 function startRestLoop(){
   clearInterval(restInt);
   $('rest-exname').textContent = session.rest.label;
+  $('rest-next').textContent = session.rest.proxima || 'Descanso';
   $('resttimer').classList.add('show');
   keepAudioAlive(true);
   tickRest();
@@ -912,12 +915,13 @@ function tickRest(){
   if(left <= 0) return endRest();
   $('ringtext').textContent = left;
   const pct = Math.max(0, Math.min(1, left / session.rest.total));
-  $('ringprog').style.strokeDashoffset = 150.8 * (1 - pct);
-  $('resttimer').classList.toggle('ending', left <= 5);
+  $('restbarfill').style.width = (pct * 100) + '%';
+  $('resttimer').classList.toggle('ending', left <= 10);
 }
 function endRest(){
   clearInterval(restInt);
-  $('resttimer').classList.remove('show', 'ending');
+  $('resttimer').classList.remove('show', 'ending', 'expanded');
+  restExpanded = false;
   session.rest = null;
   saveSession();
   keepAudioAlive(false);
@@ -927,10 +931,15 @@ function endRest(){
 }
 function skipRest(){
   clearInterval(restInt);
-  $('resttimer').classList.remove('show', 'ending');
+  $('resttimer').classList.remove('show', 'ending', 'expanded');
+  restExpanded = false;
   cancelScheduledBeeps();
   keepAudioAlive(false);
   if(session){ session.rest = null; saveSession(); }
+}
+function toggleRestExpand(){
+  restExpanded = !restExpanded;
+  $('resttimer').classList.toggle('expanded', restExpanded);
 }
 function addRest(sec){
   if(!session || !session.rest) return;
@@ -1086,7 +1095,10 @@ function toggleSet(uid, s){
   saveSession();
 
   if(entry.done){
-    if(defOf(item.ex).type !== 'cardio') startRest(item.rest, defOf(item.ex).name);
+    if(defOf(item.ex).type !== 'cardio'){
+      const proxima = doneCount < item.sets ? 'Série ' + (doneCount + 1) + ' de ' + item.sets : 'Última série feita';
+      startRest(item.rest, defOf(item.ex).name, proxima);
+    }
     if(doneCount >= item.sets) scrollToNext(posOf(uid));
   }
 }
@@ -1898,8 +1910,10 @@ $('btn-editprog').onclick = () => openEdit(previewKey);
 $('btn-canceledit').onclick = cancelEdit;
 $('btn-saveedit').onclick = saveEdit;
 $('btn-sum-done').onclick = () => { showScreen('home'); renderHome(); };
+$('rest-sub').onclick = () => addRest(-15);
 $('rest-add').onclick = () => addRest(15);
 $('rest-skip').onclick = skipRest;
+$('rest-tap').onclick = toggleRestExpand;
 $('resume-go').onclick = resumeSession;
 $('resume-drop').onclick = cancelWorkout;
 
