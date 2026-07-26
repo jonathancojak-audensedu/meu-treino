@@ -2151,8 +2151,8 @@ const SPLITS = {
   2:['full_A','full_B'],
   3:['full_A','full_B','full_C'],
   4:['upper_A','lower_A','upper_B','lower_B'],
-  5:['push','pull','legs','upper_A','lower_A'],
-  6:['push','pull','legs','push','pull','legs']
+  5:['upper_A','lower_A','upper_B','lower_B','full_A'],
+  6:['upper_A','lower_A','upper_B','lower_B','full_A','full_B']
 };
 
 /* sem equipamento não existe puxada vertical nem rosca, então PPL não fecha */
@@ -2661,6 +2661,37 @@ async function refazerPrograma(){
 }
 
 /* -------------------------------------------------------------------------
+   IMC e TMB (estimativas por fórmula, não substituem avaliação profissional)
+   ------------------------------------------------------------------------- */
+function classificarIMC(imc){
+  if(imc < 18.5) return 'abaixo do peso';
+  if(imc < 25) return 'peso saudável';
+  if(imc < 30) return 'sobrepeso';
+  return 'obesidade';
+}
+function tmbMifflin(peso, alturaCm, idade, sexo){
+  const base = 10 * peso + 6.25 * alturaCm - 5 * idade;
+  if(sexo === 'masculino') return base + 5;
+  if(sexo === 'feminino') return base - 161;
+  return base + (5 - 161) / 2;
+}
+function calcularSaude(dados){
+  const idade = parseFloat(dados.idade), alturaCm = parseFloat(dados.altura), peso = parseFloat(dados.peso);
+  if(!(idade > 0) || !(alturaCm > 0) || !(peso > 0)) return null;
+  const alturaM = alturaCm / 100;
+  const pesoMin = 18.5 * alturaM * alturaM;
+  const pesoMax = 24.9 * alturaM * alturaM;
+  return {
+    imc: peso / (alturaM * alturaM),
+    imcLabel: classificarIMC(peso / (alturaM * alturaM)),
+    pesoMin: pesoMin,
+    pesoMax: pesoMax,
+    tmb: tmbMifflin(peso, alturaCm, idade, dados.sexo),
+    tmbSaudavel: tmbMifflin((pesoMin + pesoMax) / 2, alturaCm, idade, dados.sexo)
+  };
+}
+
+/* -------------------------------------------------------------------------
    Dados corporais (opcional, fora do onboarding)
    ------------------------------------------------------------------------- */
 function abrirDadosCorporais(){
@@ -2680,17 +2711,37 @@ function abrirDadosCorporais(){
           '<button class="onb-opt' + (c.sexo === g ? ' sel' : '') + '" data-sexo="' + g + '"><span>' + g.charAt(0).toUpperCase() + g.slice(1) + '</span><span class="tick" aria-hidden="true">✓</span></button>').join('') +
       '</div>' +
     '</div>' +
+    '<div id="c-resultados"></div>' +
     '<div class="sheetact" style="margin-top:16px">' +
       '<button class="btn-ghost" data-fechar="1">Voltar</button>' +
       '<button class="btn-primary" id="c-salvar">Salvar</button>' +
     '</div>';
   openBackdrop(el, null, true);
   let sexo = c.sexo || '';
+  const fmt1 = n => n.toFixed(1).replace('.', ',');
+  const atualizarResultados = () => {
+    const s = calcularSaude({idade: $('c-idade').value, altura: $('c-altura').value, peso: $('c-peso').value, sexo: sexo});
+    const el2 = $('c-resultados');
+    if(!s){ el2.innerHTML = ''; return; }
+    const linha = (r, v) => '<div class="onb-linha"><span>' + r + '</span><span>' + v + '</span></div>';
+    el2.innerHTML =
+      '<div class="onb-resumo" style="margin-top:14px">' +
+        linha('IMC', fmt1(s.imc) + ' · ' + s.imcLabel) +
+        linha('Faixa de peso saudável', fmt1(s.pesoMin) + '–' + fmt1(s.pesoMax) + ' kg') +
+        linha('TMB estimada', Math.round(s.tmb) + ' kcal/dia') +
+        linha('TMB de referência', Math.round(s.tmbSaudavel) + ' kcal/dia') +
+      '</div>' +
+      '<div class="aviso">IMC e TMB são estimativas por fórmula (Mifflin-St Jeor), não substituem avaliação de um profissional de saúde. ' +
+      '"Referência" é o que uma pessoa da mesma idade e altura, com peso no meio da faixa saudável, teria.</div>';
+  };
   $('sheet-body').querySelectorAll('[data-sexo]').forEach(b => b.onclick = () => {
     sexo = b.dataset.sexo;
     $('sheet-body').querySelectorAll('[data-sexo]').forEach(x => x.classList.toggle('sel', x === b));
+    atualizarResultados();
   });
   $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  ['c-idade','c-altura','c-peso'].forEach(id => $(id).addEventListener('input', atualizarResultados));
+  atualizarResultados();
   $('c-salvar').onclick = async () => {
     corpo = {
       idade: $('c-idade').value || '',
@@ -2753,7 +2804,8 @@ window.MT = {
   get program(){ return PROGRAM; },
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
   gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
-  exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio
+  exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
+  saude: calcularSaude
 };
 
 boot();
