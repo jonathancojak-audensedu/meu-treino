@@ -215,6 +215,7 @@ let wakeLock = null, audioCtx = null, silentAudio = null;
 let scheduledBeeps = [];
 let deferredInstall = null;
 let calViewDate = new Date();
+let historyTab = 'lista';
 let uidSeq = 1;
 let lastRemoved = null;
 let backdropCloser = null;
@@ -1422,6 +1423,138 @@ async function deleteHistory(id){
 }
 
 /* -------------------------------------------------------------------------
+   16b. EVOLUÇÃO
+   ------------------------------------------------------------------------- */
+function exerciciosComHistorico(){
+  const vistos = new Set();
+  const out = [];
+  for(const h of history){
+    for(const e of (h.exercises || [])){
+      if(!vistos.has(e.exId)){
+        vistos.add(e.exId);
+        out.push({exId: e.exId, name: e.name, type: e.type});
+      }
+    }
+  }
+  return out;
+}
+function melhorValorDaSessao(sets, type){
+  let melhor = null;
+  for(const s of sets){
+    const v = parseFloat(type === 'reps' ? s.w : s.r);
+    if(isNaN(v) || v <= 0) continue;
+    if(melhor == null || v > melhor) melhor = v;
+  }
+  return melhor;
+}
+function serieTemporalDoExercicio(exId){
+  const out = [];
+  for(let i = history.length - 1; i >= 0; i--){
+    const h = history[i];
+    const found = (h.exercises || []).find(e => e.exId === exId);
+    if(!found || !found.sets || !found.sets.length) continue;
+    const valor = melhorValorDaSessao(found.sets, found.type);
+    if(valor == null) continue;
+    out.push({date: h.date, valor: valor});
+  }
+  return out;
+}
+function unidadeCarga(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : 'kg'; }
+function estatisticasEvolucao(serie){
+  let cargaMaxima = null, dataMaxima = null;
+  serie.forEach(p => { if(cargaMaxima == null || p.valor >= cargaMaxima){ cargaMaxima = p.valor; dataMaxima = p.date; } });
+
+  const ultimo = serie[serie.length - 1];
+  const corte = new Date(ultimo.date).getTime() - 30 * 86400000;
+  let referencia = null;
+  for(const p of serie){ if(new Date(p.date).getTime() <= corte) referencia = p; }
+  const variacao30d = referencia ? Math.round(((ultimo.valor - referencia.valor) / referencia.valor) * 1000) / 10 : null;
+
+  return {cargaMaxima, dataMaxima, variacao30d};
+}
+function descreverTendencia(serie, tipo){
+  const u = unidadeCarga(tipo);
+  const primeiro = serie[0], ultimo = serie[serie.length - 1];
+  const fmtData = iso => new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit', month:'long'});
+  const variacao = primeiro.valor ? Math.round(((ultimo.valor - primeiro.valor) / primeiro.valor) * 1000) / 10 : 0;
+  const tendencia = variacao > 0 ? 'alta' : variacao < 0 ? 'queda' : 'estável';
+  return 'Evolução de ' + primeiro.valor + ' ' + u + ' em ' + fmtData(primeiro.date) + ' para ' + ultimo.valor + ' ' + u + ' em ' + fmtData(ultimo.date) + ', ' + tendencia +
+    (variacao ? ' de ' + Math.abs(variacao).toFixed(1).replace('.', ',') + '%' : '');
+}
+function svgEvolucao(serie, tipo){
+  const W = 300, H = 150, padL = 34, padR = 10, padT = 14, padB = 22;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const valores = serie.map(p => p.valor);
+  const minV = Math.min(...valores), maxV = Math.max(...valores);
+  const span = maxV - minV || 1;
+  const n = serie.length;
+  const x = i => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = v => padT + (1 - (v - minV) / span) * plotH;
+  const u = unidadeCarga(tipo);
+
+  const pontos = serie.map((p, i) => ({x: x(i), y: y(p.valor)}));
+  const linha = pontos.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+  const circulos = pontos.map(p => '<circle class="ponto" cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3"></circle>').join('');
+
+  const rotulosX = n <= 6 ? serie.map((_, i) => i) : [0, Math.floor((n - 1) / 2), n - 1];
+  const fmtData = iso => new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
+  const ancoraX = i => i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle';
+  const textosX = rotulosX.map(i => '<text x="' + x(i).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + ancoraX(i) + '">' + fmtData(serie[i].date) + '</text>').join('');
+
+  const textosY =
+    '<text x="4" y="' + (padT + 4) + '">' + Math.round(maxV) + ' ' + u + '</text>' +
+    '<text x="4" y="' + (padT + plotH) + '">' + Math.round(minV) + ' ' + u + '</text>';
+
+  const grade = '<line class="grade" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (padL + plotW) + '" y2="' + (padT + plotH) + '"></line>';
+
+  return '<svg class="evochart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(descreverTendencia(serie, tipo)) + '">' +
+    grade + textosY + '<path class="linha" d="' + linha + '"></path>' + circulos + textosX +
+  '</svg>';
+}
+function renderEvolucao(){
+  const list = $('evolist');
+  const exs = exerciciosComHistorico();
+  if(!exs.length){
+    list.innerHTML = '<div class="empty"><div class="big">Nada por aqui ainda</div>Finalize um treino para começar a ver a evolução dos exercícios.</div>';
+    return;
+  }
+  list.innerHTML = exs.map(ex => {
+    const serie = serieTemporalDoExercicio(ex.exId);
+    const u = unidadeCarga(ex.type);
+    let corpo;
+    if(serie.length < 2){
+      corpo = '<div class="previewnote">Menos de 2 sessões registradas ainda. Volte depois de treinar esse exercício mais uma vez.</div>';
+    }else{
+      const stats = estatisticasEvolucao(serie);
+      const dataRecorde = new Date(stats.dataMaxima).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
+      const variacaoTxt = stats.variacao30d == null ? '—' : (stats.variacao30d > 0 ? '+' : '') + stats.variacao30d.toFixed(1).replace('.', ',') + '%';
+      corpo = svgEvolucao(serie, ex.type) +
+        '<div class="hstats">' +
+          '<div><div class="v">' + stats.cargaMaxima + ' ' + u + '</div><div class="l">Carga máxima</div></div>' +
+          '<div><div class="v">' + dataRecorde + '</div><div class="l">Data do recorde</div></div>' +
+          '<div><div class="v">' + variacaoTxt + '</div><div class="l">30 dias</div></div>' +
+        '</div>';
+    }
+    const ultima = serie.length ? serie[serie.length - 1] : null;
+    return '<div class="histcard">' +
+      '<button class="htop" data-evo="' + ex.exId + '" aria-expanded="false">' +
+        '<span class="hname">' + esc(ex.name) + '</span>' +
+        '<span class="hdate">' + (ultima ? ultima.valor + ' ' + u : '') + '</span>' +
+      '</button>' +
+      '<div class="hdetail" id="evo-' + ex.exId + '">' + corpo + '</div>' +
+    '</div>';
+  }).join('');
+}
+function showHistoryTab(tab){
+  historyTab = tab;
+  $('tab-lista').classList.toggle('active', tab === 'lista');
+  $('tab-evolucao').classList.toggle('active', tab === 'evolucao');
+  $('histlist').style.display = tab === 'lista' ? '' : 'none';
+  $('evolist').style.display = tab === 'evolucao' ? '' : 'none';
+  if(tab === 'evolucao') renderEvolucao();
+}
+
+/* -------------------------------------------------------------------------
    17. CALENDÁRIO
    ------------------------------------------------------------------------- */
 function openCalendar(){
@@ -1678,6 +1811,14 @@ $('histlist').addEventListener('click', e => {
   if(del) deleteHistory(del.dataset.delhist);
 });
 
+$('evolist').addEventListener('click', e => {
+  const h = e.target.closest('[data-evo]');
+  if(!h) return;
+  const d = $('evo-' + h.dataset.evo);
+  const open = d.classList.toggle('open');
+  h.setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+
 $('btn-begin').onclick = beginSession;
 $('btn-cancel').onclick = cancelWorkout;
 $('btn-finish').onclick = finishWorkout;
@@ -1692,7 +1833,9 @@ $('resume-go').onclick = resumeSession;
 $('resume-drop').onclick = cancelWorkout;
 
 $('nav-home').onclick = () => { renderHome(); showScreen('home'); };
-$('nav-history').onclick = () => { renderHistory(); showScreen('history'); };
+$('nav-history').onclick = () => { renderHistory(); showHistoryTab(historyTab); showScreen('history'); };
+$('tab-lista').onclick = () => showHistoryTab('lista');
+$('tab-evolucao').onclick = () => showHistoryTab('evolucao');
 $('nav-settings').onclick = () => showScreen('settings');
 
 $('btn-calendar').onclick = openCalendar;
@@ -2584,7 +2727,8 @@ window.MT = {
   get profile(){ return profile; },
   get program(){ return PROGRAM; },
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
-  gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga
+  gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
+  exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio
 };
 
 boot();

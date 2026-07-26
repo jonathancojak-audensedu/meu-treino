@@ -194,6 +194,14 @@
   .histcard .hstats .l{font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em;}
   .hdetail{display:none; margin-top:12px; border-top:1px solid var(--line); padding-top:10px;}
   .hdetail.open{display:block;}
+  .histtabs{display:flex; gap:8px; padding:0 16px 12px;}
+  .histtab{flex:1; background:var(--card-2); border:1px solid var(--line); color:var(--text-dim); padding:10px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; font-family:var(--display);}
+  .histtab.active{background:var(--accent); color:#111; border-color:var(--accent);}
+  .evochart{width:100%; height:auto; display:block; margin-top:2px;}
+  .evochart .linha{fill:none; stroke:var(--accent); stroke-width:2;}
+  .evochart .ponto{fill:var(--accent);}
+  .evochart .grade{stroke:var(--line); stroke-width:1;}
+  .evochart text{fill:var(--text-faint); font-size:9px; font-family:var(--mono);}
   .hex{padding:8px 0; border-bottom:1px dashed var(--line);}
   .hex:last-child{border-bottom:none;}
   .hex .hexname{font-size:13px; font-weight:600; margin-bottom:4px;}
@@ -399,7 +407,12 @@
         Calendário
       </button>
     </div>
+    <div class="histtabs">
+      <button class="histtab active" id="tab-lista">Histórico</button>
+      <button class="histtab" id="tab-evolucao">Evolução</button>
+    </div>
     <div class="histlist" id="histlist"></div>
+    <div class="histlist" id="evolist" style="display:none;"></div>
   </section>
 
   <!-- ============ SETTINGS ============ -->
