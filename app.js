@@ -65,7 +65,16 @@ const EX = {
 
   prancha:            {name:'Prancha abdominal', type:'time', group:'core'},
   prancha_lateral:    {name:'Prancha lateral', type:'time', group:'core'},
-  abdominal_polia:    {name:'Abdominal na polia', type:'reps', group:'core'}
+  abdominal_polia:    {name:'Abdominal na polia', type:'reps', group:'core'},
+
+  esteira_inclinada:  {name:'Esteira caminhada inclinada', type:'cardio', group:'cardio'},
+  esteira_corrida:    {name:'Esteira corrida', type:'cardio', group:'cardio'},
+  bike_ergometrica:   {name:'Bicicleta ergométrica', type:'cardio', group:'cardio'},
+  eliptico:           {name:'Elíptico', type:'cardio', group:'cardio'},
+  remo_ergometro:     {name:'Remo ergômetro', type:'cardio', group:'cardio'},
+  escada_ergometrica: {name:'Escada ergométrica', type:'cardio', group:'cardio'},
+  corda_pular:        {name:'Corda', type:'cardio', group:'cardio'},
+  caminhada_externa:  {name:'Caminhada ao ar livre', type:'cardio', group:'cardio'}
 };
 
 /* -------------------------------------------------------------------------
@@ -262,9 +271,13 @@ function programItems(key){
   const base = overrides[key] || (byKey(key) ? byKey(key).items : []);
   return base.map(it => Object.assign({}, it));
 }
-function shapeOf(i){ return {ex:i.ex, sets:i.sets, reps:i.reps, rpe:i.rpe, rir:i.rir, rest:i.rest}; }
+function shapeOf(i){
+  const base = {ex:i.ex, sets:i.sets, reps:i.reps, rpe:i.rpe, rir:i.rir, rest:i.rest};
+  if(i.duracaoSeg != null) base.duracaoSeg = i.duracaoSeg;
+  return base;
+}
 function newUid(){ return 'e' + (uidSeq++) + Math.random().toString(36).slice(2, 6); }
-function unitOf(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : 'reps'; }
+function unitOf(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : type === 'cardio' ? 'min' : 'reps'; }
 function fmtRest(sec){
   if(sec >= 60){ const m = Math.floor(sec/60), s = sec%60; return s ? m + ':' + String(s).padStart(2,'0') : m + ' min'; }
   return sec + 's';
@@ -504,11 +517,15 @@ function openPreview(key){
   $('editbar').style.display = 'none';
   showScreen('session');
 }
-function summarizeSets(sets, type){
+function fmtSet(s, type){
+  if(type === 'cardio') return (s.w ? esc(s.w) + 'km · ' : '') + esc(s.r) + 'min';
   const u = unitOf(type);
-  return sets.slice(0, 4).map(s => s.w
-    ? s.w + 'kg x ' + s.r + (u === 'reps' ? '' : u)
-    : s.r + (u === 'reps' ? ' reps' : u)).join(' · ');
+  return s.w
+    ? esc(s.w) + 'kg x ' + esc(s.r) + (u === 'reps' ? '' : u)
+    : esc(s.r) + (u === 'reps' ? ' reps' : u);
+}
+function summarizeSets(sets, type){
+  return sets.slice(0, 4).map(s => fmtSet(s, type)).join(' · ');
 }
 
 /* -------------------------------------------------------------------------
@@ -617,15 +634,20 @@ async function editSwapExercise(uid){
   renderEdit();
 }
 
+function novoItemPadrao(id, def){
+  if(def.type === 'cardio') return {ex:id, sets:1, reps:'15-20min', rpe:'5-6', rir:'', rest:0, duracaoSeg:15*60};
+  return {
+    ex: id, sets: 3,
+    reps: def.type === 'time' ? '30-45s' : def.type === 'dist' ? '30m' : '8-12',
+    rpe: '8', rir: '2', rest: 90
+  };
+}
+
 async function editAddExercise(){
   const choice = await pickExercise('Adicionar exercício', []);
   if(!choice) return;
   const def = defOf(choice);
-  editState.items.push({
-    uid: newUid(), ex: choice, sets: 3,
-    reps: def.type === 'time' ? '30-45s' : def.type === 'dist' ? '30m' : '8-12',
-    rpe: '8', rir: '2', rest: 90
-  });
+  editState.items.push(Object.assign({uid: newUid()}, novoItemPadrao(choice, def)));
   renderEdit();
   const items = editState.items;
   const card = $('card-' + items[items.length - 1].uid);
@@ -767,20 +789,20 @@ function cardHTML(item, pos){
   for(let s = 0; s < item.sets; s++){
     const entry = log[s] || {w:'', r:'', done:false};
     const prev = last && last.sets[s];
-    const hint = prev ? (prev.w ? prev.w + 'kg x ' + prev.r + (u === 'reps' ? '' : u) : prev.r + (u === 'reps' ? ' reps' : u)) : '';
+    const hint = prev ? fmtSet(prev, def.type) : '';
     rows +=
       '<div class="setrow' + (entry.done ? ' done' : '') + '">' +
         '<div class="setnum">' + (s+1) + '</div>' +
         '<div class="field">' +
           '<input type="number" inputmode="decimal" step="0.5" min="0" pattern="[0-9]*" value="' + esc(entry.w) + '" ' +
-            'placeholder="' + (def.type === 'reps' ? 'kg' : 'kg opc.') + '" ' +
-            'aria-label="Carga da série ' + (s+1) + ' de ' + esc(def.name) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="w">' +
-          '<div class="prevhint">' + esc(hint) + '</div>' +
+            'placeholder="' + (def.type === 'reps' ? 'kg' : def.type === 'cardio' ? 'km opc.' : 'kg opc.') + '" ' +
+            'aria-label="' + (def.type === 'cardio' ? 'Distância' : 'Carga') + ' da série ' + (s+1) + ' de ' + esc(def.name) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="w">' +
+          '<div class="prevhint">' + hint + '</div>' +
         '</div>' +
         '<div class="field">' +
           '<input type="number" inputmode="numeric" step="1" min="0" pattern="[0-9]*" value="' + esc(entry.r) + '" ' +
-            'placeholder="' + esc(def.type === 'reps' ? item.reps : (def.type === 'time' ? 'seg' : 'metros')) + '" ' +
-            'aria-label="' + (u === 'reps' ? 'Repetições' : u === 's' ? 'Segundos' : 'Metros') + ' da série ' + (s+1) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="r">' +
+            'placeholder="' + esc(def.type === 'reps' ? item.reps : (def.type === 'time' ? 'seg' : def.type === 'cardio' ? 'min' : 'metros')) + '" ' +
+            'aria-label="' + (u === 'reps' ? 'Repetições' : u === 's' ? 'Segundos' : u === 'min' ? 'Minutos' : 'Metros') + ' da série ' + (s+1) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="r">' +
           '<div class="prevhint">' + (def.type === 'reps' ? 'alvo ' + esc(item.reps) : '') + '</div>' +
         '</div>' +
         '<div class="stepper">' +
@@ -793,7 +815,7 @@ function cardHTML(item, pos){
   }
 
   const summary = log.slice(0, item.sets).filter(s => s.done).map(s =>
-    '<span>' + (s.w ? esc(s.w) + '×' : '') + esc(s.r) + (u === 'reps' ? '' : u) + '</span>').join('');
+    '<span>' + (def.type === 'cardio' ? fmtSet(s, 'cardio') : (s.w ? esc(s.w) + '×' : '') + esc(s.r) + (u === 'reps' ? '' : u)) + '</span>').join('');
 
   return '<div class="excard' + (allDone ? ' done collapsed' : '') + '" id="card-' + item.uid + '" data-uid="' + item.uid + '">' +
     '<div class="swipehint" aria-hidden="true">excluir</div>' +
@@ -809,7 +831,7 @@ function cardHTML(item, pos){
       '<span class="prog">' + doneCount + '/' + item.sets + '</span>' +
     '</button>' +
     '<div class="exbody">' +
-      '<div class="setrow-head"><div></div><div>Carga</div><div>' + (def.type === 'reps' ? 'Reps' : def.type === 'time' ? 'Tempo' : 'Dist.') + '</div><div></div><div></div></div>' +
+      '<div class="setrow-head"><div></div><div>' + (def.type === 'cardio' ? 'Dist.' : 'Carga') + '</div><div>' + (def.type === 'reps' ? 'Reps' : def.type === 'time' ? 'Tempo' : def.type === 'cardio' ? 'Duração' : 'Dist.') + '</div><div></div><div></div></div>' +
       rows +
       '<div class="exfoot">' +
         '<button class="minibtn" data-addset="' + item.uid + '">+ série</button>' +
@@ -1064,7 +1086,7 @@ function toggleSet(uid, s){
   saveSession();
 
   if(entry.done){
-    startRest(item.rest, defOf(item.ex).name);
+    if(defOf(item.ex).type !== 'cardio') startRest(item.rest, defOf(item.ex).name);
     if(doneCount >= item.sets) scrollToNext(posOf(uid));
   }
 }
@@ -1140,11 +1162,7 @@ async function addExercise(){
   const choice = await pickExercise('Adicionar exercício', []);
   if(!choice) return;
   const def = defOf(choice);
-  const item = {
-    uid: newUid(), ex: choice, sets: 3,
-    reps: def.type === 'time' ? '30-45s' : def.type === 'dist' ? '30m' : '8-12',
-    rpe: '8', rir: '2', rest: 90
-  };
+  const item = Object.assign({uid: newUid()}, novoItemPadrao(choice, def));
   session.items.push(item);
   session.log[item.uid] = Array.from({length: item.sets}, () => ({w:'', r:'', done:false}));
   renderSession();
@@ -1188,7 +1206,7 @@ function pickExercise(title, suggested, replacing){
       const hits = list.filter(x => !q || norm(x.def.name).includes(q) || norm(x.def.group || '').includes(q));
       hits.forEach(x => {
         rows.push('<button class="opt" data-v="' + x.id + '">' + esc(x.def.name) +
-          '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : 'distância') : '') + '</span></button>');
+          '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span></button>');
       });
       if(!hits.length && filter && filter.trim().length > 2){
         rows.push('<button class="opt" data-new="' + esc(filter.trim()) + '">Criar "' + esc(filter.trim()) + '"' +
@@ -1256,7 +1274,7 @@ async function cancelWorkout(){
 }
 
 async function finishWorkout(){
-  let volume = 0, doneSets = 0;
+  let volume = 0, doneSets = 0, cardioMin = 0;
   const exercises = [];
 
   session.items.forEach(it => {
@@ -1267,6 +1285,7 @@ async function finishWorkout(){
     if(!sets.length) return;
     doneSets += sets.length;
     if(def.type === 'reps') sets.forEach(s => { volume += (parseFloat(s.w) || 0) * (parseFloat(s.r) || 0); });
+    if(def.type === 'cardio') sets.forEach(s => { cardioMin += parseFloat(s.r) || 0; });
     exercises.push({exId: it.ex, name: def.name, type: def.type, sets: sets});
   });
 
@@ -1299,6 +1318,7 @@ async function finishWorkout(){
     duration: Math.floor((Date.now() - session.startedAt) / 1000),
     volume: Math.round(volume),
     setsDone: doneSets,
+    cardioMin: Math.round(cardioMin),
     exercises: exercises
   };
   const previous = history.find(h => h.key === session.key);
@@ -1362,6 +1382,7 @@ function renderSummary(entry, previous, prs, todayCount){
       '<div class="c"><div class="v">' + mins + ' min</div><div class="l">Duração</div></div>' +
       '<div class="c"><div class="v">' + entry.setsDone + '</div><div class="l">Séries</div></div>' +
       '<div class="c"><div class="v">' + entry.volume + '</div><div class="l">Volume kg</div></div>' +
+      (entry.cardioMin ? '<div class="c"><div class="v">' + entry.cardioMin + '</div><div class="l">Cardio min</div></div>' : '') +
     '</div>';
 
   if(prs.length){
@@ -1373,7 +1394,7 @@ function renderSummary(entry, previous, prs, todayCount){
   html += '<div class="sumsection">Séries registradas</div><div class="histcard"><div class="hdetail open" style="border:none; margin:0; padding:0;">' +
     entry.exercises.map(e =>
       '<div class="hex"><div class="hexname">' + esc(e.name) + '</div><div class="hexsets">' +
-      e.sets.map(s => '<span>' + (s.w ? esc(s.w) + 'kg x ' : '') + esc(s.r) + (e.type === 'reps' ? '' : unitOf(e.type)) + '</span>').join('') +
+      e.sets.map(s => '<span>' + fmtSet(s, e.type) + '</span>').join('') +
       '</div></div>').join('') +
     '</div></div>';
 
@@ -1405,11 +1426,12 @@ function renderHistory(){
         '<div><div class="v">' + Math.round(h.duration/60) + ' min</div><div class="l">Duração</div></div>' +
         '<div><div class="v">' + h.volume + ' kg</div><div class="l">Volume</div></div>' +
         '<div><div class="v">' + h.setsDone + '</div><div class="l">Séries</div></div>' +
+        (h.cardioMin ? '<div><div class="v">' + h.cardioMin + ' min</div><div class="l">Cardio</div></div>' : '') +
       '</div>' +
       '<div class="hdetail" id="hd-' + h.id + '">' +
         (h.exercises || []).map(e =>
           '<div class="hex"><div class="hexname">' + esc(e.name) + '</div><div class="hexsets">' +
-          (e.sets || []).map(s => '<span>' + (s.w ? esc(s.w) + 'kg x ' : '') + esc(s.r) + (e.type === 'reps' ? '' : unitOf(e.type)) + '</span>').join('') +
+          (e.sets || []).map(s => '<span>' + fmtSet(s, e.type) + '</span>').join('') +
           '</div></div>').join('') +
         '<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">' +
           '<button class="minibtn" data-editdata="' + h.id + '">Editar data e horário</button>' +
@@ -2101,7 +2123,16 @@ const META = {
   bird_dog:          {p:'core', m:{core:1}, e:['corpo'], s:[], c:1},
 
   fecho_pegada:      {p:'pegada', m:{}, e:['barra_fixa'], s:['cotovelo','punho'], c:1},
-  farmer:            {p:'pegada', m:{core:.5}, e:['halter'], s:['punho'], c:1}
+  farmer:            {p:'pegada', m:{core:.5}, e:['halter'], s:['punho'], c:1},
+
+  esteira_inclinada:  {p:'cardio', m:{}, e:['cardio'], s:[], c:1},
+  esteira_corrida:    {p:'cardio', m:{}, e:['cardio'], s:['joelho','tornozelo'], c:1},
+  bike_ergometrica:   {p:'cardio', m:{}, e:['cardio'], s:['joelho'], c:1},
+  eliptico:           {p:'cardio', m:{}, e:['cardio'], s:[], c:1},
+  remo_ergometro:     {p:'cardio', m:{}, e:['cardio'], s:['lombar'], c:1},
+  escada_ergometrica: {p:'cardio', m:{}, e:['cardio'], s:['joelho'], c:1},
+  corda_pular:        {p:'cardio', m:{}, e:['corpo'], s:['joelho','tornozelo'], c:1},
+  caminhada_externa:  {p:'cardio', m:{}, e:['corpo'], s:[], c:1}
 };
 
 /* isolamento: nunca deve ocupar o lugar de exercício principal */
@@ -2112,7 +2143,7 @@ const META = {
  'fecho_pegada','farmer'].forEach(id => { if(META[id]) META[id].iso = true; });
 
 /* qualidade do equipamento, para não preferir elástico onde existe barra */
-const NIVEL_EQUIP = {elastico:1, corpo:2, maquina:3, smith:3, polia:3, banco:3, halter:4, barra:5, barra_fixa:5};
+const NIVEL_EQUIP = {elastico:1, corpo:2, maquina:3, smith:3, polia:3, banco:3, cardio:3, halter:4, barra:5, barra_fixa:5};
 Object.keys(META).forEach(id => {
   META[id].nivel = Math.max.apply(null, META[id].e.map(eq => NIVEL_EQUIP[eq] || 2));
 });
@@ -2146,7 +2177,7 @@ const EX_EXTRA = {
 
 /* equipamento disponível em cada lugar */
 const EQUIP = {
-  academia: ['corpo','halter','barra','banco','barra_fixa','polia','maquina','smith','elastico'],
+  academia: ['corpo','halter','barra','banco','barra_fixa','polia','maquina','smith','elastico','cardio'],
   simples:  ['corpo','halter','barra','banco','barra_fixa','polia','elastico'],
   casa:     ['corpo','halter','banco','elastico'],
   corpo:    ['corpo']
@@ -2236,7 +2267,7 @@ function candidatos(padrao, perfil){
   });
 }
 
-const ALVO_COMPLEXIDADE = {principal:3, acessorio:2, isolado:1};
+const ALVO_COMPLEXIDADE = {principal:3, acessorio:2, isolado:1, cardio:1};
 
 function escolherExercicio(padrao, papel, perfil, usados, noDia){
   const lista = candidatos(padrao, perfil).filter(id => (noDia || []).indexOf(id) === -1);
@@ -2286,9 +2317,19 @@ function repsDoTipo(tipo, reps){
 }
 
 function tempoEstimado(itens){
-  // 5 min de aquecimento mais série a série, contando execução e descanso
-  return 300 + itens.reduce((a, i) => a + i.sets * (40 + i.rest), 0);
+  // 5 min de aquecimento mais série a série, contando execução e descanso.
+  // cardio é um bloco contínuo, não série x descanso, então usa a duração própria.
+  return 300 + itens.reduce((a, i) => {
+    if(defOf(i.ex).type === 'cardio') return a + (i.duracaoSeg || 0);
+    return a + i.sets * (40 + i.rest);
+  }, 0);
 }
+
+/* cardio entra ao fim da sessão só para emagrecer e saúde; o ponto fixo dentro
+   da faixa mostrada (15-25min / 10-15min) é reservado do orçamento de tempo
+   antes de decidir quantos exercícios de musculação cabem */
+const CARDIO_MINUTOS = {emagrecer: 20, saude: 12};
+const CARDIO_FAIXA = {emagrecer: '15-25min', saude: '10-15min'};
 
 function gerarPrograma(perfil){
   const objetivo = PARAMS[perfil.objetivo] ? perfil.objetivo : 'hipertrofia';
@@ -2296,6 +2337,11 @@ function gerarPrograma(perfil){
   const dias = tabela[Number(perfil.dias)] || tabela[3];
   const teto = TETO_EXERCICIOS[Number(perfil.tempo)] || 6;
   const limite = (Number(perfil.tempo) || 60) * 60;
+  const temCardio = objetivo === 'emagrecer' || objetivo === 'saude';
+  // em sessoes curtas, o cardio completo nao cabe sobrando espaco pra musculacao,
+  // entao ele cede parte do seu tempo (nunca mais de ~35% do total da sessao)
+  const cardioSeg = temCardio ? Math.min(CARDIO_MINUTOS[objetivo] * 60, Math.round(limite * 0.35)) : 0;
+  const limiteMusc = temCardio ? limite - cardioSeg : limite;
   const usados = [];
   const programa = [];
 
@@ -2333,16 +2379,16 @@ function gerarPrograma(perfil){
     }
 
     // corta o que não cabe no tempo, começando pelos isolados do fim
-    while(tempoEstimado(itens) > limite && itens.length > 3){
+    while(tempoEstimado(itens) > limiteMusc && itens.length > 3){
       let alvo = -1;
       for(let k = itens.length - 1; k >= 0; k--){ if(itens[k].papel === 'isolado'){ alvo = k; break; } }
       itens.splice(alvo === -1 ? itens.length - 1 : alvo, 1);
     }
     // ainda estourando: encolhe o descanso, com piso por papel
-    if(tempoEstimado(itens) > limite){
+    if(tempoEstimado(itens) > limiteMusc){
       const trabalho = itens.reduce((a, x) => a + x.sets * 40, 0);
       const descanso = itens.reduce((a, x) => a + x.sets * x.rest, 0);
-      const sobra = limite - 300 - trabalho;
+      const sobra = limiteMusc - 300 - trabalho;
       if(sobra > 0 && descanso > 0){
         const fator = sobra / descanso;
         const piso = {principal:75, acessorio:60, isolado:40};
@@ -2351,7 +2397,7 @@ function gerarPrograma(perfil){
     }
     // último recurso: tira séries, sem descer de 2
     let guarda = 0;
-    while(tempoEstimado(itens) > limite && guarda++ < 30){
+    while(tempoEstimado(itens) > limiteMusc && guarda++ < 30){
       const ordem = itens.slice().sort((a, b) => (b.papel === 'isolado' ? 1 : 0) - (a.papel === 'isolado' ? 1 : 0) || b.sets - a.sets);
       const alvo = ordem.find(x => x.sets > 2);
       if(!alvo) break;
@@ -2361,8 +2407,19 @@ function gerarPrograma(perfil){
     // prioridade ganha uma série a mais no exercício correspondente
     (perfil.prioridade || []).forEach(g => {
       const alvo = itens.find(x => grupoBate(g, META[x.ex].m));
-      if(alvo && tempoEstimado(itens) + (40 + alvo.rest) <= limite) alvo.sets++;
+      if(alvo && tempoEstimado(itens) + (40 + alvo.rest) <= limiteMusc) alvo.sets++;
     });
+
+    // cardio sempre por último, fora da disputa de espaço/corte da musculação
+    if(temCardio){
+      const idCardio = escolherExercicio('cardio', 'cardio', perfil, usados, itens.map(x => x.ex));
+      if(idCardio){
+        usados.push(idCardio);
+        // sessão curta: mostra a duração real cedida ao cardio, não a faixa cheia que não coube
+        const repsCardio = cardioSeg < CARDIO_MINUTOS[objetivo] * 60 ? Math.round(cardioSeg / 60) + 'min' : CARDIO_FAIXA[objetivo];
+        itens.push({ex:idCardio, sets:1, reps:repsCardio, rpe:'5-6', rir:'', rest:0, papel:'cardio', duracaoSeg:cardioSeg});
+      }
+    }
 
     programa.push({
       key: 'd' + (i + 1),
@@ -2371,7 +2428,11 @@ function gerarPrograma(perfil){
       block: modelo.block,
       meta: descreverDia(itens),
       warmup: AQUECIMENTOS[modelo.block],
-      items: itens.map(it => ({ex:it.ex, sets:it.sets, reps:it.reps, rpe:it.rpe, rir:it.rir, rest:it.rest}))
+      items: itens.map(it => {
+        const base = {ex:it.ex, sets:it.sets, reps:it.reps, rpe:it.rpe, rir:it.rir, rest:it.rest};
+        if(it.duracaoSeg != null) base.duracaoSeg = it.duracaoSeg;
+        return base;
+      })
     });
   });
 

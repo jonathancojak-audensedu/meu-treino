@@ -38,11 +38,13 @@ function verificar(perfil){
   prog.forEach(dia => {
     if(!dia.items.length) return falha(perfil, dia.name + ' saiu vazio');
     if(dia.items.length < 3) return falha(perfil, dia.name + ' com so ' + dia.items.length + ' exercicios');
-    if(dia.items.length > TETO[perfil.tempo]) return falha(perfil, dia.name + ' passou do teto de exercicios');
+    // cardio e um adicional fixo no fim, nao concorre pelo teto de exercicios de musculacao
+    const musculacao = dia.items.filter(it => MT.EX[it.ex] && MT.EX[it.ex].type !== 'cardio');
+    if(musculacao.length > TETO[perfil.tempo]) return falha(perfil, dia.name + ' passou do teto de exercicios');
     if(!dia.warmup || !dia.name || !dia.key) return falha(perfil, dia.name + ' sem metadados');
 
     const vistos = [];
-    dia.items.forEach(it => {
+    dia.items.forEach((it, idx) => {
       const def = MT.EX[it.ex], meta = MT.META[it.ex];
       if(!def) return falha(perfil, 'exercicio inexistente no catalogo: ' + it.ex);
       if(!meta) return falha(perfil, 'exercicio sem metadados: ' + it.ex);
@@ -51,12 +53,20 @@ function verificar(perfil){
       if(!meta.e.every(eq => disp.indexOf(eq) !== -1)) return falha(perfil, it.ex + ' exige equipamento indisponivel em ' + perfil.local);
       if(meta.s.some(art => dores.indexOf(art) !== -1)) return falha(perfil, it.ex + ' carrega articulacao com dor');
       if(meta.c > maxC) return falha(perfil, it.ex + ' complexo demais para ' + perfil.experiencia);
+      if(def.type === 'cardio'){
+        if(it.sets !== 1) return falha(perfil, it.ex + ' cardio com ' + it.sets + ' series, deveria ser 1 bloco');
+        if(idx !== dia.items.length - 1) return falha(perfil, it.ex + ' cardio nao esta por ultimo no dia');
+        if(!it.reps || !it.rpe) return falha(perfil, it.ex + ' sem prescricao completa');
+        if(!/min$/.test(it.reps)) return falha(perfil, it.ex + ' e cardio mas reps=' + it.reps);
+        if(!(it.duracaoSeg > 0)) return falha(perfil, it.ex + ' cardio sem duracaoSeg pro orcamento de tempo');
+        return;
+      }
       if(!(it.sets >= 2 && it.sets <= 6)) return falha(perfil, it.ex + ' com ' + it.sets + ' series');
       if(!it.reps || !it.rest || !it.rpe) return falha(perfil, it.ex + ' sem prescricao completa');
       if(def.type === 'time' && !/s$/.test(it.reps)) return falha(perfil, it.ex + ' e por tempo mas reps=' + it.reps);
     });
 
-    const est = MT.tempo(dia.items.map(i => ({sets:i.sets, rest:i.rest})));
+    const est = MT.tempo(dia.items);
     if(est > perfil.tempo * 60 * 1.12) return falha(perfil, dia.name + ' estimado em ' + Math.round(est/60) + 'min contra ' + perfil.tempo);
   });
 }
@@ -92,7 +102,7 @@ function amostra(titulo, perfil){
   const vol = MT.volume(prog);
   console.log('\n' + titulo);
   prog.forEach(d => {
-    const est = Math.round(MT.tempo(d.items.map(i => ({sets:i.sets, rest:i.rest}))) / 60);
+    const est = Math.round(MT.tempo(d.items) / 60);
     console.log('  ' + d.name + ' (~' + est + 'min): ' + d.items.map(i => MT.EX[i.ex].name + ' ' + i.sets + 'x' + i.reps).join(' | '));
   });
   const top = Object.keys(vol).filter(k => vol[k] >= 4).sort((a,b)=>vol[b]-vol[a]).slice(0,6);
