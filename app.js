@@ -4,6 +4,9 @@
    descanso agendado no relógio de áudio, treino livre e recordes.
    ========================================================================= */
 
+/* Número que recebe o feedback pelo WhatsApp (wa.me), só dígitos com DDI e DDD. */
+const FEEDBACK_NUMERO = '5581986501624';
+
 /* -------------------------------------------------------------------------
    1. CATÁLOGO DE EXERCÍCIOS
    type: 'reps' (carga x repetições) | 'time' (segundos) | 'dist' (metros)
@@ -1836,7 +1839,7 @@ $('nav-home').onclick = () => { renderHome(); showScreen('home'); };
 $('nav-history').onclick = () => { renderHistory(); showHistoryTab(historyTab); showScreen('history'); };
 $('tab-lista').onclick = () => showHistoryTab('lista');
 $('tab-evolucao').onclick = () => showHistoryTab('evolucao');
-$('nav-settings').onclick = () => showScreen('settings');
+$('nav-settings').onclick = () => { prepararFeedback(); showScreen('settings'); };
 
 $('btn-calendar').onclick = openCalendar;
 $('cal-close').onclick = () => backdropCloser && backdropCloser();
@@ -1924,12 +1927,34 @@ async function boot(){
   renderHistory();
   updateStorageLabel();
   atualizarAjustes();
+  prepararFeedback();
   if(!profile) abrirOnboarding(false);
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+}
+
+async function obterVersaoApp(){
+  try{
+    const chaves = await caches.keys();
+    return chaves.find(k => k.indexOf('meu-treino-') === 0) || 'desconhecida';
+  }catch(e){
+    return 'desconhecida';
+  }
+}
+async function prepararFeedback(){
+  const el = $('btn-feedback');
+  if(!el) return;
+  const versao = await obterVersaoApp();
+  const standalone = mq('(display-mode: standalone)') || window.navigator.standalone === true;
+  const msg = 'Feedback do Meu Treino\n' +
+    'Versão: ' + versao + '\n' +
+    'Modo: ' + (standalone ? 'instalado' : 'navegador') + '\n' +
+    'Aparelho: ' + navigator.userAgent + '\n\n' +
+    'Descreva aqui o que encontrou:';
+  el.href = 'https://wa.me/' + FEEDBACK_NUMERO + '?text=' + encodeURIComponent(msg);
 }
 
 function updateStorageLabel(){

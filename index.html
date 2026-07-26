@@ -212,7 +212,7 @@
 
   /* ---------- settings ---------- */
   .setlist{padding:0 16px; display:flex; flex-direction:column; gap:10px;}
-  .setitem{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:15px 16px; display:flex; justify-content:space-between; align-items:center; gap:14px; width:100%; text-align:left; color:inherit; font-family:inherit; cursor:pointer; min-height:56px;}
+  .setitem{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:15px 16px; display:flex; justify-content:space-between; align-items:center; gap:14px; width:100%; text-align:left; color:inherit; font-family:inherit; cursor:pointer; min-height:56px; text-decoration:none; box-sizing:border-box;}
   .setitem .t{font-size:14px; font-weight:600;}
   .setitem .d{font-size:12px; color:var(--text-dim); margin-top:3px; line-height:1.45;}
   .setitem .chev{color:var(--text-faint); font-size:20px;}
@@ -480,6 +480,13 @@
         </div>
         <span class="chev" aria-hidden="true">›</span>
       </button>
+      <a class="setitem" id="btn-feedback" href="#" target="_blank" rel="noopener">
+        <div>
+          <div class="t">Enviar feedback</div>
+          <div class="d">Abre o WhatsApp com a versão do app preenchida. Você revisa antes de enviar.</div>
+        </div>
+        <span class="chev" aria-hidden="true">›</span>
+      </a>
       <button class="setitem" id="btn-wipe">
         <div>
           <div class="t" style="color:var(--danger)">Apagar todo o histórico</div>
