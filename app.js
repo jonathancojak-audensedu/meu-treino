@@ -74,7 +74,93 @@ const EX = {
   remo_ergometro:     {name:'Remo ergômetro', type:'cardio', group:'cardio'},
   escada_ergometrica: {name:'Escada ergométrica', type:'cardio', group:'cardio'},
   corda_pular:        {name:'Corda', type:'cardio', group:'cardio'},
-  caminhada_externa:  {name:'Caminhada ao ar livre', type:'cardio', group:'cardio'}
+  caminhada_externa:  {name:'Caminhada ao ar livre', type:'cardio', group:'cardio'},
+
+  supino_declinado:        {name:'Supino declinado barra', type:'reps', group:'peito'},
+  crucifixo_inclinado:     {name:'Crucifixo inclinado halteres', type:'reps', group:'peito'},
+  peck_deck:               {name:'Peck deck (voador)', type:'reps', group:'peito'},
+  pullover:                {name:'Pullover halteres', type:'reps', group:'costas'},
+  supino_halteres_unilateral: {name:'Supino unilateral com halteres', type:'reps', group:'peito'},
+  crossover_unilateral:    {name:'Crossover unilateral na polia', type:'reps', group:'peito'},
+  flexao_declinada:        {name:'Flexão declinada', type:'reps', group:'peito'},
+  flexao_joelho:           {name:'Flexão com joelho apoiado', type:'reps', group:'peito'},
+  supino_maquina_convergente: {name:'Supino em máquina convergente', type:'reps', group:'peito'},
+
+  desenvolvimento_arnold:  {name:'Desenvolvimento Arnold', type:'reps', group:'ombro'},
+  elevacao_frontal:        {name:'Elevação frontal', type:'reps', group:'ombro'},
+  crucifixo_inverso:       {name:'Crucifixo inverso', type:'reps', group:'ombro'},
+  remada_alta:             {name:'Remada alta barra', type:'reps', group:'ombro'},
+  remada_alta_halteres:    {name:'Remada alta com halteres', type:'reps', group:'ombro'},
+  desenv_halteres_unilateral: {name:'Desenvolvimento unilateral com halteres', type:'reps', group:'ombro'},
+  elevacao_lateral_unilateral: {name:'Elevação lateral unilateral', type:'reps', group:'ombro'},
+  elevacao_frontal_unilateral: {name:'Elevação frontal unilateral', type:'reps', group:'ombro'},
+  desenvolvimento_maquina: {name:'Desenvolvimento de ombro na máquina', type:'reps', group:'ombro'},
+
+  remada_serrote:          {name:'Remada serrote', type:'reps', group:'costas'},
+  remada_t:                {name:'Remada T', type:'reps', group:'costas'},
+  encolhimento_trapezio:   {name:'Encolhimento de trapézio', type:'reps', group:'costas'},
+  remada_baixa_unilateral: {name:'Remada baixa unilateral na polia', type:'reps', group:'costas'},
+  remada_maquina_unilateral: {name:'Remada unilateral na máquina', type:'reps', group:'costas'},
+  puxada_unilateral:       {name:'Puxada unilateral na polia', type:'reps', group:'costas'},
+  remada_barra_supinada:   {name:'Remada curvada pegada supinada', type:'reps', group:'costas'},
+
+  rosca_concentrada:       {name:'Rosca concentrada', type:'reps', group:'bíceps'},
+  rosca_inversa:           {name:'Rosca inversa barra', type:'reps', group:'bíceps'},
+  rosca_21:                {name:'Rosca 21', type:'reps', group:'bíceps'},
+  rosca_punho:             {name:'Rosca de punho', type:'reps', group:'bíceps'},
+  rosca_unilateral_halteres: {name:'Rosca direta unilateral com halter', type:'reps', group:'bíceps'},
+  rosca_martelo_unilateral: {name:'Rosca martelo unilateral', type:'reps', group:'bíceps'},
+  rosca_scott_unilateral:  {name:'Rosca Scott unilateral', type:'reps', group:'bíceps'},
+  rosca_barra_w:           {name:'Rosca com barra W', type:'reps', group:'bíceps'},
+  rosca_zottman:           {name:'Rosca Zottman', type:'reps', group:'bíceps'},
+  triceps_frances:         {name:'Tríceps francês', type:'reps', group:'tríceps'},
+  triceps_banco:           {name:'Tríceps no banco', type:'reps', group:'tríceps'},
+  triceps_unilateral:      {name:'Tríceps unilateral na polia', type:'reps', group:'tríceps'},
+  triceps_corda_unilateral: {name:'Tríceps corda unilateral', type:'reps', group:'tríceps'},
+  triceps_frances_unilateral: {name:'Tríceps francês unilateral', type:'reps', group:'tríceps'},
+  triceps_testa_unilateral: {name:'Tríceps testa unilateral', type:'reps', group:'tríceps'},
+  triceps_coice:           {name:'Tríceps coice halteres', type:'reps', group:'tríceps'},
+
+  agachamento_sumo:        {name:'Agachamento sumô', type:'reps', group:'quadríceps'},
+  leg_press_unilateral:    {name:'Leg press unilateral', type:'reps', group:'quadríceps'},
+  cadeira_adutora:         {name:'Cadeira adutora', type:'reps', group:'quadríceps'},
+  cadeira_abdutora:        {name:'Cadeira abdutora', type:'reps', group:'posterior'},
+  panturrilha_leg_press:   {name:'Panturrilha no leg press', type:'reps', group:'panturrilha'},
+  terra_convencional:      {name:'Levantamento terra convencional', type:'reps', group:'posterior'},
+  terra_sumo:              {name:'Levantamento terra sumô', type:'reps', group:'posterior'},
+  avanco_smith:            {name:'Avanço no Smith', type:'reps', group:'quadríceps'},
+  hack_unilateral:         {name:'Hack machine unilateral', type:'reps', group:'quadríceps'},
+  extensora_unilateral:    {name:'Cadeira extensora unilateral', type:'reps', group:'quadríceps'},
+  flexora_unilateral:      {name:'Cadeira flexora unilateral', type:'reps', group:'posterior'},
+  rdl_unilateral:          {name:'Levantamento terra romeno unilateral', type:'reps', group:'posterior'},
+  hip_thrust_unilateral:   {name:'Hip thrust unilateral', type:'reps', group:'posterior'},
+  ponte_gluteo_unilateral: {name:'Ponte de glúteo unilateral', type:'reps', group:'posterior'},
+  elevacao_pelvica_maquina: {name:'Elevação pélvica em máquina', type:'reps', group:'posterior'},
+  afundo_halteres_caminhando: {name:'Afundo caminhando com halteres', type:'reps', group:'quadríceps'},
+  bulgaro_smith:           {name:'Agachamento búlgaro no Smith', type:'reps', group:'quadríceps'},
+  agachamento_taca:        {name:'Agachamento taça', type:'reps', group:'quadríceps'},
+  step_up:                 {name:'Step up com halteres', type:'reps', group:'quadríceps'},
+  afundo_reverso:          {name:'Afundo reverso peso corporal', type:'reps', group:'quadríceps'},
+  good_morning_barra:      {name:'Good morning com barra', type:'reps', group:'posterior'},
+  gluteo_4_apoios:         {name:'Glúteo em 4 apoios', type:'reps', group:'posterior'},
+  gluteo_caneleira:        {name:'Glúteo com caneleira', type:'reps', group:'posterior'},
+  panturrilha_unilateral_corpo: {name:'Panturrilha unilateral peso corporal', type:'reps', group:'panturrilha'},
+  panturrilha_smith:       {name:'Panturrilha no Smith', type:'reps', group:'panturrilha'},
+  panturrilha_burro:       {name:'Panturrilha burro', type:'reps', group:'panturrilha'},
+
+  abdominal_infra:         {name:'Abdominal infra', type:'reps', group:'core'},
+  elevacao_pernas_suspenso: {name:'Elevação de pernas suspenso', type:'reps', group:'core'},
+  roda_abdominal:          {name:'Roda abdominal', type:'reps', group:'core'},
+  prancha_elevacao_membro: {name:'Prancha com elevação de membro', type:'time', group:'core'},
+  abdominal_bicicleta:     {name:'Abdominal bicicleta', type:'reps', group:'core'},
+  abdominal_canivete:      {name:'Abdominal canivete', type:'reps', group:'core'},
+  prancha_dinamica:        {name:'Prancha dinâmica', type:'time', group:'core'},
+  russian_twist:           {name:'Abdominal russo', type:'reps', group:'core'},
+  superman:                {name:'Superman', type:'reps', group:'core'},
+  hiperextensao_banco:     {name:'Hiperextensão no banco romano', type:'reps', group:'core'},
+  abdominal_maquina:       {name:'Abdominal na máquina', type:'reps', group:'core'},
+
+  farmer_unilateral:       {name:'Farmer carry unilateral', type:'dist', group:'pegada'}
 };
 
 /* -------------------------------------------------------------------------
@@ -219,6 +305,7 @@ let history = [];
 let settings = {sound:true, wake:true};
 let overrides = {};
 let customEx = {};
+let favoritos = {};
 let session = null;
 let previewKey = null;
 let editState = null;
@@ -1189,10 +1276,20 @@ async function addExercise(){
 function allExercises(){
   return Object.keys(EX).concat(Object.keys(customEx)).map(id => ({id, def: defOf(id)}));
 }
+
+const CHIP_LABELS = {peito:'Peito', costas:'Costas', ombros:'Ombros', bracos:'Braços', pernas:'Pernas', gluteos:'Glúteos', abdomen:'Abdômen', cardio:'Cardio'};
+const CHIP_GRUPOS = {
+  peito: ['peito'], costas: ['costas'], ombros: ['ombro'],
+  bracos: ['bíceps','tríceps','pegada'], pernas: ['quadríceps','panturrilha'],
+  gluteos: ['posterior'], abdomen: ['core'], cardio: ['cardio']
+};
+
 function pickExercise(title, suggested, replacing){
   return new Promise(resolve => {
     const el = $('sheet-backdrop');
     const list = allExercises().sort((a, b) => a.def.name.localeCompare(b.def.name, 'pt-BR'));
+    const recentesIds = exerciciosComHistorico().map(e => e.exId).slice(0, 8);
+    let chipAtivo = '';
     const norm = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     $('sheet-body').innerHTML =
@@ -1201,25 +1298,50 @@ function pickExercise(title, suggested, replacing){
       (replacing ? '<p>Substituindo ' + esc(replacing) + '. A troca vale para este treino.</p>' : '') +
       '<input class="searchbox" id="ex-search" type="search" placeholder="Buscar por nome ou grupo muscular" ' +
       'aria-label="Buscar exercício" autocomplete="off">' +
+      '<div class="chiprow" id="ex-chips">' +
+        Object.keys(CHIP_LABELS).map(c => '<button class="chip" data-chip="' + c + '">' + CHIP_LABELS[c] + '</button>').join('') +
+      '</div>' +
       '<div class="optlist" id="ex-options"></div>';
 
     const options = $('ex-options');
+    const optRow = x => {
+      const fav = !!favoritos[x.id];
+      return '<button class="opt" data-v="' + x.id + '">' +
+        '<span class="optmain">' + esc(x.def.name) +
+          '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span>' +
+        '</span>' +
+        '<span class="star' + (fav ? ' fav' : '') + '" data-star="' + x.id + '" role="button" aria-label="' + (fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos') + '">★</span>' +
+      '</button>';
+    };
+    const passaChip = x => !chipAtivo || (CHIP_GRUPOS[chipAtivo] || []).indexOf(x.def.group) !== -1;
+
     function draw(filter){
       const q = norm(filter || '');
       const rows = [];
-      if(!q && suggested && suggested.length){
-        rows.push('<div class="optgroup">Alternativas sugeridas</div>');
-        suggested.forEach(id => {
-          rows.push('<button class="opt" data-v="' + id + '">' + esc(defOf(id).name) +
-            '<span class="om">' + esc(defOf(id).group || '') + '</span></button>');
-        });
+      const base = list.filter(passaChip);
+
+      if(!q){
+        const favs = base.filter(x => favoritos[x.id]);
+        if(favs.length){
+          rows.push('<div class="optgroup">Favoritos</div>');
+          favs.forEach(x => rows.push(optRow(x)));
+        }
+        const recentes = recentesIds.map(id => base.find(x => x.id === id)).filter(Boolean);
+        if(recentes.length){
+          rows.push('<div class="optgroup">Usados recentemente</div>');
+          recentes.forEach(x => rows.push(optRow(x)));
+        }
+        if(!chipAtivo && suggested && suggested.length){
+          rows.push('<div class="optgroup">Alternativas sugeridas</div>');
+          suggested.forEach(id => {
+            const x = list.find(l => l.id === id);
+            if(x) rows.push(optRow(x));
+          });
+        }
         rows.push('<div class="optgroup">Todos os exercícios</div>');
       }
-      const hits = list.filter(x => !q || norm(x.def.name).includes(q) || norm(x.def.group || '').includes(q));
-      hits.forEach(x => {
-        rows.push('<button class="opt" data-v="' + x.id + '">' + esc(x.def.name) +
-          '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span></button>');
-      });
+      const hits = base.filter(x => !q || norm(x.def.name).includes(q) || norm(x.def.group || '').includes(q));
+      hits.forEach(x => rows.push(optRow(x)));
       if(!hits.length && filter && filter.trim().length > 2){
         rows.push('<button class="opt" data-new="' + esc(filter.trim()) + '">Criar "' + esc(filter.trim()) + '"' +
           '<span class="om">exercício novo, fica salvo no seu catálogo</span></button>');
@@ -1232,13 +1354,28 @@ function pickExercise(title, suggested, replacing){
     const done = v => { if(settled) return; settled = true; el.classList.remove('show'); backdropCloser = null; resolve(v || null); };
     openBackdrop(el, () => done(null), true);
 
-    $('ex-search').addEventListener('input', ev => draw(ev.target.value));
-    $('sheet-body').addEventListener('click', ev => {
+    $('ex-search').oninput = ev => draw(ev.target.value);
+    $('ex-chips').onclick = ev => {
+      const c = ev.target.closest('[data-chip]');
+      if(!c) return;
+      chipAtivo = chipAtivo === c.dataset.chip ? '' : c.dataset.chip;
+      $('ex-chips').querySelectorAll('[data-chip]').forEach(bt => bt.classList.toggle('sel', bt.dataset.chip === chipAtivo));
+      draw($('ex-search').value);
+    };
+    $('sheet-body').onclick = ev => {
+      const star = ev.target.closest('[data-star]');
+      if(star){
+        const id = star.dataset.star;
+        if(favoritos[id]) delete favoritos[id]; else favoritos[id] = true;
+        Store.set('favoritos', favoritos);
+        draw($('ex-search').value);
+        return;
+      }
       const novo = ev.target.closest('[data-new]');
       if(novo) return done(createCustomExercise(novo.dataset.new));
       const b = ev.target.closest('[data-v]');
       if(b) done(b.dataset.v);
-    });
+    };
   });
 }
 
@@ -1724,7 +1861,7 @@ function toast(msg, actionLabel, cb){
    19. BACKUP
    ------------------------------------------------------------------------- */
 function exportBackup(){
-  const payload = {app:'meu-treino', version:3, exportedAt:new Date().toISOString(), history:history, overrides:overrides, customEx:customEx, profile:profile, corpo:corpo, program:PROGRAM};
+  const payload = {app:'meu-treino', version:3, exportedAt:new Date().toISOString(), history:history, overrides:overrides, customEx:customEx, profile:profile, corpo:corpo, program:PROGRAM, favoritos:favoritos};
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1754,6 +1891,7 @@ async function importBackup(file){
   if(data.profile){ profile = data.profile; await Store.set('profile', profile); atualizarAjustes(); }
   if(Array.isArray(data.program) && data.program.length){ PROGRAM = data.program; await Store.set('program', PROGRAM); }
   if(data.corpo){ corpo = data.corpo; await Store.set('corpo', corpo); atualizarAjustes(); }
+  if(data.favoritos){ favoritos = data.favoritos; await Store.set('favoritos', favoritos); }
   await saveHistory();
   renderHistory(); renderHome();
   toast('Backup restaurado');
@@ -1983,10 +2121,10 @@ $('btn-install').onclick = async () => {
    21. BOOT
    ------------------------------------------------------------------------- */
 async function boot(){
-  const [h, s, active, ov, cx, pf, cp, pg] = await Promise.all([
+  const [h, s, active, ov, cx, pf, cp, pg, fv] = await Promise.all([
     Store.get('history'), Store.get('settings'), Store.get('active_session'),
     Store.get('overrides'), Store.get('custom_ex'), Store.get('profile'), Store.get('corpo'),
-    Store.get('program')
+    Store.get('program'), Store.get('favoritos')
   ]);
   if(Array.isArray(pg) && pg.length) PROGRAM = pg;
   profile = (pf && typeof pf === 'object') ? pf : null;
@@ -1995,6 +2133,7 @@ async function boot(){
   if(s && typeof s === 'object') settings = Object.assign(settings, s);
   if(ov && typeof ov === 'object') overrides = ov;
   if(cx && typeof cx === 'object') customEx = cx;
+  if(fv && typeof fv === 'object') favoritos = fv;
   $('sw-sound').setAttribute('aria-checked', settings.sound ? 'true' : 'false');
   $('sw-wake').setAttribute('aria-checked', settings.wake ? 'true' : 'false');
 
@@ -2146,7 +2285,93 @@ const META = {
   remo_ergometro:     {p:'cardio', m:{}, e:['cardio'], s:['lombar'], c:1},
   escada_ergometrica: {p:'cardio', m:{}, e:['cardio'], s:['joelho'], c:1},
   corda_pular:        {p:'cardio', m:{}, e:['corpo'], s:['joelho','tornozelo'], c:1},
-  caminhada_externa:  {p:'cardio', m:{}, e:['corpo'], s:[], c:1}
+  caminhada_externa:  {p:'cardio', m:{}, e:['corpo'], s:[], c:1},
+
+  supino_declinado:        {p:'emp_h', m:{peito:1, triceps:.5, ombro:.2}, e:['barra','banco'], s:['ombro','punho'], c:3},
+  crucifixo_inclinado:     {p:'emp_h', m:{peito:1, ombro:.3}, e:['halter','banco'], s:['ombro'], c:2},
+  peck_deck:               {p:'emp_h', m:{peito:1}, e:['maquina'], s:['ombro'], c:1},
+  pullover:                {p:'pux_v', m:{costas:.7, peito:.5, triceps:.3}, e:['halter','banco'], s:['ombro'], c:2},
+  supino_halteres_unilateral: {p:'emp_h', m:{peito:1, triceps:.5, ombro:.5}, e:['halter','banco'], s:['ombro'], c:2, u:true},
+  crossover_unilateral:    {p:'emp_h', m:{peito:1}, e:['polia'], s:['ombro'], c:1, u:true},
+  flexao_declinada:        {p:'emp_h', m:{peito:1, ombro:1, triceps:.5}, e:['corpo','banco'], s:['punho','ombro'], c:2},
+  flexao_joelho:           {p:'emp_h', m:{peito:1, triceps:.5, ombro:.3}, e:['corpo'], s:['punho'], c:1},
+  supino_maquina_convergente: {p:'emp_h', m:{peito:1, triceps:.5}, e:['maquina'], s:[], c:1},
+
+  desenvolvimento_arnold:  {p:'emp_v', m:{ombro:1, triceps:.5}, e:['halter'], s:['ombro'], c:2},
+  elevacao_frontal:        {p:'lateral', m:{ombro:1}, e:['halter'], s:['ombro'], c:1},
+  crucifixo_inverso:       {p:'lateral', m:{ombro:1, costas:.3}, e:['halter'], s:['ombro'], c:1},
+  remada_alta:             {p:'lateral', m:{ombro:1, costas:.3}, e:['barra'], s:['ombro','punho'], c:2},
+  remada_alta_halteres:    {p:'lateral', m:{ombro:1, costas:.3}, e:['halter'], s:['ombro','punho'], c:2},
+  desenv_halteres_unilateral: {p:'emp_v', m:{ombro:1, triceps:.5}, e:['halter'], s:['ombro'], c:2, u:true},
+  elevacao_lateral_unilateral: {p:'lateral', m:{ombro:1}, e:['halter'], s:['ombro'], c:1, u:true},
+  elevacao_frontal_unilateral: {p:'lateral', m:{ombro:1}, e:['halter'], s:['ombro'], c:1, u:true},
+  desenvolvimento_maquina: {p:'emp_v', m:{ombro:1, triceps:.5}, e:['maquina'], s:['ombro'], c:1},
+
+  remada_serrote:          {p:'pux_h', m:{costas:1, biceps:.5}, e:['halter','banco'], s:[], c:2, u:true},
+  remada_t:                {p:'pux_h', m:{costas:1, biceps:.5}, e:['maquina'], s:['lombar'], c:2},
+  encolhimento_trapezio:   {p:'trapezio', m:{costas:1}, e:['barra'], s:[], c:1},
+  remada_baixa_unilateral: {p:'pux_h', m:{costas:1, biceps:.5}, e:['polia'], s:[], c:2, u:true},
+  remada_maquina_unilateral: {p:'pux_h', m:{costas:1, biceps:.5}, e:['maquina'], s:[], c:2, u:true},
+  puxada_unilateral:       {p:'pux_v', m:{costas:1, biceps:.5}, e:['polia'], s:['ombro'], c:2, u:true},
+  remada_barra_supinada:   {p:'pux_h', m:{costas:1, biceps:1}, e:['barra'], s:['lombar','cotovelo'], c:3},
+
+  rosca_concentrada:       {p:'biceps', m:{biceps:1}, e:['halter','banco'], s:['cotovelo'], c:1},
+  rosca_inversa:           {p:'biceps', m:{biceps:1}, e:['barra'], s:['punho','cotovelo'], c:1},
+  rosca_21:                {p:'biceps', m:{biceps:1}, e:['barra'], s:['cotovelo','punho'], c:2},
+  rosca_punho:             {p:'punho', m:{}, e:['halter','banco'], s:['punho'], c:1},
+  rosca_unilateral_halteres: {p:'biceps', m:{biceps:1}, e:['halter'], s:['cotovelo'], c:1, u:true},
+  rosca_martelo_unilateral: {p:'biceps', m:{biceps:1}, e:['halter'], s:['cotovelo'], c:1, u:true},
+  rosca_scott_unilateral:  {p:'biceps', m:{biceps:1}, e:['halter','banco'], s:['cotovelo'], c:1, u:true},
+  rosca_barra_w:           {p:'biceps', m:{biceps:1}, e:['barra'], s:['punho','cotovelo'], c:1},
+  rosca_zottman:           {p:'biceps', m:{biceps:1}, e:['halter'], s:['punho','cotovelo'], c:2},
+  triceps_frances:         {p:'triceps', m:{triceps:1}, e:['halter'], s:['cotovelo','ombro'], c:2},
+  triceps_banco:           {p:'triceps', m:{triceps:1, peito:.3}, e:['corpo','banco'], s:['ombro','punho'], c:1},
+  triceps_unilateral:      {p:'triceps', m:{triceps:1}, e:['polia'], s:['cotovelo'], c:1, u:true},
+  triceps_corda_unilateral: {p:'triceps', m:{triceps:1}, e:['polia'], s:['cotovelo'], c:1, u:true},
+  triceps_frances_unilateral: {p:'triceps', m:{triceps:1}, e:['halter'], s:['cotovelo','ombro'], c:2, u:true},
+  triceps_testa_unilateral: {p:'triceps', m:{triceps:1}, e:['halter'], s:['cotovelo'], c:2, u:true},
+  triceps_coice:           {p:'triceps', m:{triceps:1}, e:['halter','banco'], s:['cotovelo'], c:1, u:true},
+
+  agachamento_sumo:        {p:'quadril', m:{gluteos:1, quadriceps:.7, posterior:.3}, e:['barra'], s:['joelho','lombar'], c:3},
+  leg_press_unilateral:    {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['maquina'], s:['joelho'], c:2, u:true},
+  cadeira_adutora:         {p:'quadril', m:{gluteos:.5}, e:['maquina'], s:['joelho'], c:1},
+  cadeira_abdutora:        {p:'quadril', m:{gluteos:1}, e:['maquina'], s:['joelho'], c:1},
+  panturrilha_leg_press:   {p:'panturrilha', m:{panturrilha:1}, e:['maquina'], s:['tornozelo'], c:1},
+  terra_convencional:      {p:'quadril', m:{posterior:1, gluteos:1, lombar:.7, quadriceps:.3}, e:['barra'], s:['lombar','joelho'], c:3},
+  terra_sumo:              {p:'quadril', m:{gluteos:1, posterior:.7, quadriceps:.5, lombar:.5}, e:['barra'], s:['lombar','joelho'], c:3},
+  avanco_smith:            {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['smith'], s:['joelho'], c:2, u:true},
+  hack_unilateral:         {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['maquina'], s:['joelho'], c:2, u:true},
+  extensora_unilateral:    {p:'joelho', m:{quadriceps:1}, e:['maquina'], s:['joelho'], c:1, u:true},
+  flexora_unilateral:      {p:'quadril', m:{posterior:1}, e:['maquina'], s:['joelho'], c:1, u:true},
+  rdl_unilateral:          {p:'quadril', m:{posterior:1, gluteos:1}, e:['halter'], s:['lombar','joelho'], c:3, u:true},
+  hip_thrust_unilateral:   {p:'quadril', m:{gluteos:1, posterior:.5}, e:['halter'], s:['joelho'], c:2, u:true},
+  ponte_gluteo_unilateral: {p:'quadril', m:{gluteos:1, posterior:.5}, e:['corpo'], s:[], c:1, u:true},
+  elevacao_pelvica_maquina: {p:'quadril', m:{gluteos:1, posterior:.3}, e:['maquina'], s:[], c:1},
+  afundo_halteres_caminhando: {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['halter'], s:['joelho'], c:2, u:true},
+  bulgaro_smith:           {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['smith'], s:['joelho'], c:2, u:true},
+  agachamento_taca:        {p:'joelho', m:{quadriceps:1, gluteos:.5, core:.3}, e:['halter'], s:['joelho'], c:1},
+  step_up:                 {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['halter','banco'], s:['joelho'], c:2, u:true},
+  afundo_reverso:          {p:'joelho', m:{quadriceps:1, gluteos:1}, e:['corpo'], s:['joelho'], c:1, u:true},
+  good_morning_barra:      {p:'quadril', m:{posterior:1, gluteos:.5, lombar:.5}, e:['barra'], s:['lombar'], c:3},
+  gluteo_4_apoios:         {p:'quadril', m:{gluteos:1}, e:['corpo'], s:[], c:1},
+  gluteo_caneleira:        {p:'quadril', m:{gluteos:1}, e:['corpo'], s:[], c:1, u:true},
+  panturrilha_unilateral_corpo: {p:'panturrilha', m:{panturrilha:1}, e:['corpo'], s:['tornozelo'], c:1, u:true},
+  panturrilha_smith:       {p:'panturrilha', m:{panturrilha:1}, e:['smith'], s:['tornozelo'], c:1},
+  panturrilha_burro:       {p:'panturrilha', m:{panturrilha:1}, e:['maquina'], s:['tornozelo'], c:2},
+
+  abdominal_infra:         {p:'core', m:{core:1}, e:['corpo'], s:['lombar'], c:1},
+  elevacao_pernas_suspenso: {p:'core', m:{core:1}, e:['barra_fixa'], s:['ombro','lombar'], c:2},
+  roda_abdominal:          {p:'core', m:{core:1, ombro:.3}, e:['corpo'], s:['lombar','ombro'], c:3},
+  prancha_elevacao_membro: {p:'core', m:{core:1, gluteos:.3}, e:['corpo'], s:['ombro'], c:2},
+  abdominal_bicicleta:     {p:'core', m:{core:1}, e:['corpo'], s:['lombar'], c:1},
+  abdominal_canivete:      {p:'core', m:{core:1}, e:['corpo'], s:['lombar'], c:2},
+  prancha_dinamica:        {p:'core', m:{core:1, ombro:.3}, e:['corpo'], s:['ombro'], c:2},
+  russian_twist:           {p:'core', m:{core:1}, e:['corpo'], s:['lombar'], c:1},
+  superman:                {p:'core', m:{core:1}, e:['corpo'], s:['lombar'], c:1},
+  hiperextensao_banco:     {p:'core', m:{core:1, posterior:.5}, e:['maquina'], s:['lombar'], c:2},
+  abdominal_maquina:       {p:'core', m:{core:1}, e:['maquina'], s:[], c:1},
+
+  farmer_unilateral:       {p:'pegada', m:{core:.5}, e:['halter'], s:['punho'], c:1, u:true}
 };
 
 /* isolamento: nunca deve ocupar o lugar de exercício principal */
@@ -2154,7 +2379,13 @@ const META = {
  'rosca_martelo','rosca_scott','rosca_elastico','triceps_corda','triceps_testa','triceps_elastico',
  'flexao_diamante','extensora','flexora','gluteo_polia','panturrilha_pe','panturrilha_sent','panturrilha_corpo',
  'panturrilha_halter','prancha','prancha_lateral','abdominal_polia','abdominal_solo','bird_dog',
- 'fecho_pegada','farmer'].forEach(id => { if(META[id]) META[id].iso = true; });
+ 'fecho_pegada','farmer',
+ 'peck_deck','crossover_unilateral','elevacao_frontal','crucifixo_inverso','elevacao_lateral_unilateral',
+ 'elevacao_frontal_unilateral','encolhimento_trapezio','rosca_concentrada','rosca_punho','triceps_coice',
+ 'cadeira_adutora','cadeira_abdutora','extensora_unilateral','flexora_unilateral','gluteo_4_apoios',
+ 'gluteo_caneleira','abdominal_infra','elevacao_pernas_suspenso','roda_abdominal','prancha_elevacao_membro',
+ 'abdominal_bicicleta','abdominal_canivete','prancha_dinamica','russian_twist','superman','abdominal_maquina'
+].forEach(id => { if(META[id]) META[id].iso = true; });
 
 /* qualidade do equipamento, para não preferir elástico onde existe barra */
 const NIVEL_EQUIP = {elastico:1, corpo:2, maquina:3, smith:3, polia:3, banco:3, cardio:3, halter:4, barra:5, barra_fixa:5};
@@ -2923,6 +3154,7 @@ window.MT = {
   get overrides(){ return overrides; },
   get profile(){ return profile; },
   get program(){ return PROGRAM; },
+  get favoritos(){ return favoritos; },
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
   gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
   exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
