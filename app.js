@@ -1411,9 +1411,53 @@ function renderHistory(){
           '<div class="hex"><div class="hexname">' + esc(e.name) + '</div><div class="hexsets">' +
           (e.sets || []).map(s => '<span>' + (s.w ? esc(s.w) + 'kg x ' : '') + esc(s.r) + (e.type === 'reps' ? '' : unitOf(e.type)) + '</span>').join('') +
           '</div></div>').join('') +
-        '<div style="margin-top:12px"><button class="minibtn danger" data-delhist="' + h.id + '">Apagar este treino</button></div>' +
+        '<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">' +
+          '<button class="minibtn" data-editdata="' + h.id + '">Editar data e horário</button>' +
+          '<button class="minibtn danger" data-delhist="' + h.id + '">Apagar este treino</button>' +
+        '</div>' +
       '</div></div>';
   }).join('');
+}
+
+function editarDataTreino(id){
+  const entry = history.find(h => h.id === id);
+  if(!entry) return;
+  const d = new Date(entry.date);
+  const pad = n => String(n).padStart(2, '0');
+  const dataVal = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const horaVal = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const hoje = new Date();
+  const dataMax = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
+
+  const el = $('sheet-backdrop');
+  $('sheet-body').innerHTML =
+    '<div class="sheethead"><h2 id="sheet-title">Editar data e horário</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    '<p>Ajusta quando esse treino aconteceu de verdade. Serve pra registrar um treino que você esqueceu de fechar na hora.</p>' +
+    '<div class="onb-opts">' +
+      '<input class="onb-input" id="ed-data" type="date" max="' + dataMax + '" value="' + dataVal + '">' +
+      '<input class="onb-input" id="ed-hora" type="time" value="' + horaVal + '">' +
+    '</div>' +
+    '<div class="sheetact" style="margin-top:16px">' +
+      '<button class="btn-ghost" data-fechar="1">Cancelar</button>' +
+      '<button class="btn-primary" id="ed-salvar">Salvar</button>' +
+    '</div>';
+  openBackdrop(el, null, true);
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  $('ed-salvar').onclick = async () => {
+    const dataStr = $('ed-data').value, horaStr = $('ed-hora').value;
+    if(!dataStr || !horaStr){ toast('Preencha data e horário'); return; }
+    const nova = new Date(dataStr + 'T' + horaStr);
+    if(isNaN(nova.getTime())){ toast('Data inválida'); return; }
+    if(nova.getTime() > Date.now()){ toast('A data não pode ser no futuro'); return; }
+    entry.date = nova.toISOString();
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
+    await saveHistory();
+    if(backdropCloser) backdropCloser();
+    renderHistory();
+    renderHome();
+    toast('Data atualizada');
+  };
 }
 
 async function deleteHistory(id){
@@ -1812,6 +1856,8 @@ $('histlist').addEventListener('click', e => {
   }
   const del = e.target.closest('[data-delhist]');
   if(del) deleteHistory(del.dataset.delhist);
+  const ed = e.target.closest('[data-editdata]');
+  if(ed) editarDataTreino(ed.dataset.editdata);
 });
 
 $('evolist').addEventListener('click', e => {
