@@ -133,6 +133,20 @@
   .warmupblock b{color:var(--text); display:block; margin-bottom:4px; font-family:var(--display); font-size:13.5px;}
 
   .startbar{padding:16px; margin-top:8px; display:flex; gap:10px;}
+  /* #startbar (previa do treino) fica fixo acima da navegacao inferior, sempre
+     visivel, com espaco reservado no fim da lista pra nao esconder o ultimo
+     exercicio atras dela. finishbar/editbar (sessao ativa/edicao) continuam
+     no fluxo normal. */
+  #startbar{
+    position:fixed; left:0; right:0; bottom:calc(var(--navh) + env(safe-area-inset-bottom));
+    max-width:520px; margin:0 auto; z-index:55; flex-direction:column; gap:0;
+    background:var(--bg-elev); border-top:1px solid var(--line);
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+    box-shadow:0 -8px 24px rgba(0,0,0,.35);
+  }
+  .startbar-info{font-size:12px; color:var(--text-dim); text-align:center; margin-bottom:10px; font-family:var(--mono);}
+  .startbar-btns{display:flex; gap:10px;}
+  #exlist.com-barra-fixa{padding-bottom:112px;}
   .finishbar{padding:16px; margin-top:8px; display:flex; gap:10px;}
   .finishbtn{flex:1; background:var(--accent); color:#111; border:none; padding:17px; border-radius:var(--radius); font-family:var(--display); font-weight:700; font-size:15px; cursor:pointer; min-height:52px;}
   .finishbtn:active{opacity:.85;}

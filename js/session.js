@@ -198,6 +198,9 @@ function openPreview(key){
   }).join('') +
   '<div class="previewnote">Depois de iniciar você pode trocar, reordenar, incluir e excluir exercícios.</div>';
 
+  const minEstimados = Math.round(tempoEstimado(items) / 60);
+  $('startbar-info').textContent = items.length + (items.length === 1 ? ' exercício' : ' exercícios') + ' · ~' + minEstimados + 'min';
+  $('exlist').classList.add('com-barra-fixa');
   $('btn-editprog').style.display = w ? 'block' : 'none';
   $('startbar').style.display = 'flex';
   $('finishbar').style.display = 'none';
@@ -229,6 +232,7 @@ function openEdit(key){
 
 function renderEdit(){
   const items = editState.items;
+  $('exlist').classList.remove('com-barra-fixa');
   $('exlist').innerHTML = items.map((it, i) => editCardHTML(it, i, items.length)).join('') +
     '<button class="addex" data-addex="1">+ adicionar exercício</button>';
   $('sess-timer').textContent = '~' + Math.round(tempoEstimado(items) / 60) + 'min';
@@ -440,6 +444,7 @@ function resumeSession(){
 
 function renderSession(){
   editState = null;
+  $('exlist').classList.remove('com-barra-fixa');
   $('exlist').innerHTML = session.items.map((it, i) => cardHTML(it, i)).join('') +
     '<button class="addex" data-addex="1">+ adicionar exercício</button>' +
     (session.items.length
