@@ -198,6 +198,17 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('dia dourado tem estrela', !!dourado && !!dourado.querySelector('.star'));
   check('resumo do mes cita dia dourado', $('cal-summary').textContent.includes('dia dourado'));
 
+  console.log('\n== navegacao de mes no calendario ==');
+  const mesAtual = $('cal-monthlabel').textContent;
+  $('cal-prev').click();
+  await wait(20);
+  check('mes anterior muda o rotulo do mes', $('cal-monthlabel').textContent !== mesAtual);
+  check('mes anterior nao mostra o dia dourado de hoje', !$('cal-grid').querySelector('.calday.double'));
+  $('cal-next').click();
+  await wait(20);
+  check('proximo mes volta a mostrar o mes atual', $('cal-monthlabel').textContent === mesAtual);
+  check('dia dourado reaparece ao voltar pro mes atual', !!$('cal-grid').querySelector('.calday.double'));
+
   console.log('\n== persistencia entre sessoes ==');
   const dump = {};
   for(const k of Object.keys(w.localStorage)) dump[k] = w.localStorage.getItem(k);
@@ -212,7 +223,7 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('previa mostra o que foi feito', $2('exlist').textContent.includes('100kg x 6'));
 
   console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(0);
+  process.exit(fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

@@ -101,20 +101,48 @@ function touch(w, el, x, y){
   await wait(20);
   check('rolar para cima nao exclui', $('exlist').querySelectorAll('.excard[data-uid]').length === total3);
 
-  console.log('\n== backup ==');
-  let baixou = null;
+  console.log('\n== backup: exporta com todos os dados, nao so o historico ==');
+  let baixou = null, conteudoBaixado = null;
   const origCreate = w.document.createElement.bind(w.document);
   w.document.createElement = tag => {
     const el = origCreate(tag);
     if(tag === 'a') el.click = () => { baixou = el.download; };
     return el;
   };
+  const OrigBlob = w.Blob;
+  w.Blob = function(partes, opts){ conteudoBaixado = partes[0]; return new OrigBlob(partes, opts); };
+  w.MT.favoritos.supino_reto = true;
   w.eval('exportBackup()');
   await wait(20);
   check('arquivo de backup nomeado por data', !!baixou && /^meu-treino-\d{4}-\d{2}-\d{2}\.json$/.test(baixou));
+  const payload = JSON.parse(conteudoBaixado);
+  check('backup inclui o historico completo', Array.isArray(payload.history) && payload.history.length === w.MT.history.length);
+  check('backup inclui favoritos', payload.favoritos && payload.favoritos.supino_reto === true);
+  check('backup inclui o programa', Array.isArray(payload.program) && payload.program.length > 0);
+  check('backup inclui overrides e exercicios personalizados', 'overrides' in payload && 'customEx' in payload);
+
+  console.log('\n== restaurar um backup traz o historico e os favoritos de volta ==');
+  const w3 = boot();
+  const $3 = id => w3.document.getElementById(id);
+  await wait(150);
+  check('comeca sem favoritos', Object.keys(w3.MT.favoritos).length === 0);
+  check('comeca sem historico', w3.MT.history.length === 0);
+  w3.arquivoDeTeste = {text: () => Promise.resolve(JSON.stringify(payload))};
+  w3.eval('importBackup(arquivoDeTeste)');
+  await wait(30);
+  $3('sheet-body').querySelector('[data-r="1"]').click();
+  await wait(40);
+  check('historico restaurado com a mesma quantidade do backup', w3.MT.history.length === payload.history.length);
+  check('favoritos restaurados', w3.MT.favoritos.supino_reto === true);
+  w3.arquivoRuim = {text: () => Promise.resolve(JSON.stringify({app:'outra coisa'}))};
+  w3.eval('importBackup(arquivoRuim)');
+  await wait(30);
+  $3('sheet-body').querySelector('[data-r="1"]').click();
+  await wait(30);
+  check('historico nao foi apagado por um arquivo invalido', w3.MT.history.length === payload.history.length);
 
   console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(0);
+  process.exit(fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

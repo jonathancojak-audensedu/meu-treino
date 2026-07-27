@@ -122,4 +122,4 @@ amostra('RETOMANDO, 2 dias, 30min, em casa com halteres, saude',
   {experiencia:'retomando', dias:2, tempo:30, local:'casa', objetivo:'saude', dores:['lombar'], prioridade:[], nome:'D'});
 
 console.log('\n' + (problemas.length ? problemas.length + ' FALHAS' : 'todas as verificacoes passaram'));
-process.exit(0);
+process.exit(problemas.length ? 1 : 0);

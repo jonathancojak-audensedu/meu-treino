@@ -198,7 +198,7 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('timer de descanso abre', $2('resttimer').classList.contains('show'));
 
   console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(0);
+  process.exit(fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 25000);

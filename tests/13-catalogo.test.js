@@ -2,7 +2,12 @@ const { JSDOM } = require('jsdom');
 const fs = require('fs');
 const path = require('path').join(__dirname, '..') + '/';
 const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
+// instrumentacao anexada na mesma execucao (Store e const, so e visivel dentro
+// do proprio eval que o declara), pra contar quantas vezes Store.set('favoritos')
+// dispara por um unico clique, sem depender de mockar localStorage ou window
+const js = fs.readFileSync(path + 'app.js', 'utf8') +
+  "\nwindow.__contadorFav = 0;\nconst __origStoreSet = Store.set.bind(Store);\n" +
+  "Store.set = function(k, v){ if(k === 'favoritos') window.__contadorFav++; return __origStoreSet(k, v); };\n";
 
 const dias = n => new Date(Date.now() - n * 86400000).toISOString();
 const HISTORICO = [
@@ -99,6 +104,34 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   await wait(30);
   check('sheet fecha ao escolher', !$('sheet-backdrop').classList.contains('show'));
   check('exercicio foi adicionado a sessao', w.MT.session.items.some(it => it.ex === 'agachamento_sumo'));
+
+  console.log('\n== reabrir o seletor varias vezes nao acumula handler de clique (regressao) ==');
+  // sheet-body e o campo de busca sao elementos persistentes: so o innerHTML
+  // e trocado a cada abertura, o elemento em si continua o mesmo. se o codigo
+  // usasse addEventListener em vez de atribuicao (.onclick/.oninput), cada
+  // abertura empilharia mais um handler e um unico clique na estrela
+  // dispararia Store.set('favoritos') uma vez por handler acumulado.
+  for(let i = 0; i < 5; i++){
+    $('exlist').querySelector('[data-addex]').click();
+    await wait(20);
+    $('sheet-body').querySelector('.closebtn').click();
+    await wait(10);
+  }
+  $('exlist').querySelector('[data-addex]').click();
+  await wait(30);
+  check('sem favorito no supino reto ainda', !MT.favoritos['supino_reto']);
+  const estrelaSupino = $('ex-options').querySelector('[data-star="supino_reto"]');
+  check('estrela do supino reto aparece na lista completa', !!estrelaSupino);
+  w.__contadorFav = 0;
+  estrelaSupino.click();
+  await wait(20);
+  check('um unico clique dispara Store.set("favoritos") exatamente uma vez, mesmo depois de reabrir 5x', w.__contadorFav === 1);
+  check('favoritar funciona depois de reabrir o seletor varias vezes', MT.favoritos['supino_reto'] === true);
+  w.__contadorFav = 0;
+  $('ex-options').querySelector('[data-star="supino_reto"]').click();
+  await wait(20);
+  check('desfavoritar tambem dispara Store.set uma unica vez', w.__contadorFav === 1);
+  check('desfavoritar tambem funciona depois de reabrir varias vezes', !MT.favoritos['supino_reto']);
 
   console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
   process.exit(fails ? 1 : 0);
