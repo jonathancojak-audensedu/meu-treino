@@ -293,6 +293,53 @@ async function importBackup(file){
   toast('Backup restaurado');
 }
 
+/* -------------------------------------------------------------------------
+   19.1 PROTEÇÃO DE DADOS
+   Sem backend, ninguém além da própria pessoa lembra de tirar backup. No
+   máximo um aviso por abertura do app, pra não empilhar dois avisos juntos.
+   ------------------------------------------------------------------------- */
+function estaInstalado(){
+  return mq('(display-mode: standalone)') || window.navigator.standalone === true;
+}
+function ehIOS(){
+  return /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+async function avisarPrazoIOSSeNecessario(){
+  if(!ehIOS() || estaInstalado() || !history.length || settings.avisoIOSMostrado) return false;
+  settings.avisoIOSMostrado = true;
+  await Store.set('settings', settings);
+  await askConfirm({
+    title: 'Instale pra não perder o histórico',
+    text: 'No iPhone, o Safari pode apagar dados de sites não instalados depois de alguns dias sem uso. Toque em Compartilhar e "Adicionar à Tela de Início" pra guardar seus treinos de verdade.',
+    confirmLabel: 'Entendi', hideCancel: true
+  });
+  return true;
+}
+
+async function lembrarBackupSeNecessario(){
+  if(!history.length) return;
+  const lembrete = settings.backupLembrete || null;
+  const treinosDesde = history.length - (lembrete ? lembrete.treinos : 0);
+  const diasDesde = lembrete ? (Date.now() - new Date(lembrete.quando).getTime()) / 86400000 : 0;
+  if(treinosDesde < 15 && diasDesde < 30) return;
+  settings.backupLembrete = {quando: new Date().toISOString(), treinos: history.length};
+  await Store.set('settings', settings);
+  const ok = await askConfirm({
+    title: 'Fazer backup do seu histórico?',
+    text: 'Seus dados ficam só neste aparelho, sem conta nem nuvem. Exportar de vez em quando evita perder tudo se você trocar de celular ou limpar o navegador.',
+    confirmLabel: 'Exportar agora'
+  });
+  if(ok) exportBackup();
+}
+
+async function avisosDeProtecaoDeDados(){
+  if(!profile || !history.length) return;
+  const mostrouAvisoIOS = await avisarPrazoIOSSeNecessario();
+  if(mostrouAvisoIOS) return;
+  await lembrarBackupSeNecessario();
+}
+
 async function wipeAll(){
   const ok = await askConfirm({title:'Apagar todo o histórico?', text:'Todos os treinos registrados serão removidos deste aparelho. Não tem como desfazer.', confirmLabel:'Apagar tudo', danger:true});
   if(!ok) return;
@@ -618,6 +665,7 @@ async function boot(){
   atualizarAjustes();
   prepararFeedback();
   if(!profile) abrirOnboarding(false);
+  else avisosDeProtecaoDeDados();
   if(!migracao.ok){
     toast('Não consegui atualizar o formato dos seus dados, mas nada foi apagado. Existe uma cópia de segurança salva no aparelho. Avise pelo botão de feedback em Ajustes.');
   }

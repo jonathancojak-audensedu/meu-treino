@@ -248,7 +248,8 @@ function desenharResumo(){
     '</div>' +
     '<div class="aviso">Este app não substitui avaliação de um profissional de educação física ou de saúde. ' +
     'Se você tem dor, lesão ou condição clínica, procure orientação antes de treinar. ' +
-    'As limitações que você marcou servem apenas para tirar exercícios da sua lista.</div>';
+    'As limitações que você marcou servem apenas para tirar exercícios da sua lista.</div>' +
+    (onbEditando ? '' : '<div class="aviso">Seus dados de treino ficam só neste aparelho, sem conta nem nuvem. Em Ajustes dá para exportar um backup quando quiser.</div>');
 
   $('onb-foot').innerHTML = '<button class="onb-next" id="onb-next">' +
     (onbEditando ? 'Salvar alterações' : 'Começar a treinar') + '</button>';

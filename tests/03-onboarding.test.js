@@ -95,6 +95,7 @@ const todoJs = fs.readdirSync(jsDir)
   check('mostra a frequencia', $('onb-body').textContent.includes('4 dias por semana'));
   check('mostra a limitacao', $('onb-body').textContent.includes('ombro'));
   check('tem aviso profissional', $('onb-body').textContent.includes('não substitui avaliação'));
+  check('primeira abertura avisa que os dados ficam so no aparelho', $('onb-body').textContent.includes('ficam só neste aparelho'));
   check('progresso 9 de 9', $('onb-step').textContent === '9/9');
 
   $('onb-next').click();
@@ -136,6 +137,7 @@ const todoJs = fs.readdirSync(jsDir)
   for(let i = 0; i < 8; i++){ $2('onb-next').click(); await wait(40); }
   check('chegou no resumo em modo edicao', $2('onb-body').textContent.includes('Tudo certo, Jon'));
   check('botao diz salvar', $2('onb-next').textContent.includes('Salvar'));
+  check('aviso de primeira abertura nao repete ao editar o perfil', !$2('onb-body').textContent.includes('ficam só neste aparelho'));
   $2('onb-next').click();
   await wait(120);
   const pf2 = JSON.parse(w2.localStorage.getItem('mt_profile'));

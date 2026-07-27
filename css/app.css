@@ -350,5 +350,6 @@
   .onb-linha span:first-child{color:var(--text-dim);}
   .onb-linha span:last-child{text-align:right; font-weight:600;}
   .aviso{font-size:12.5px; color:var(--text-dim); line-height:1.55; background:var(--card-2); border:1px solid var(--line); border-radius:12px; padding:13px 15px;}
+  .aviso + .aviso{margin-top:10px;}
 
   ::-webkit-scrollbar{display:none;}
