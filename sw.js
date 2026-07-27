@@ -1,12 +1,21 @@
 /* Service worker do Meu Treino.
-   Suba o numero da versao sempre que alterar index.html, app.js ou o manifest.
+   Suba o numero da versao sempre que alterar index.html, algum arquivo em
+   js/ ou css/, ou o manifest. Se um arquivo novo entrar em js/ ou css/ e
+   ficar de fora do SHELL, o service worker nao instala e o offline quebra.
    Caminhos relativos para funcionar em subpasta do GitHub Pages. */
-const VERSION = 'meu-treino-v18';
+const VERSION = 'meu-treino-v19';
 
 const SHELL = [
   './',
   './index.html',
-  './app.js',
+  './js/main.js',
+  './js/catalog.js',
+  './js/generator.js',
+  './js/store.js',
+  './js/ui.js',
+  './js/history.js',
+  './js/session.js',
+  './js/onboarding.js',
   './manifest.webmanifest',
   './silence.wav',
   './icon-192.png',
