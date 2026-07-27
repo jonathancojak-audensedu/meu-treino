@@ -33,9 +33,11 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 
 **Sessão salva a cada digitação.** Fechou o app, retoma de onde parou.
 
+**Dados têm versão.** `SCHEMA_VERSION` em `app.js` e a chave `schemaVersion` no `Store` guardam qual é o formato atual. `migrarDados()` roda no início do `boot()`, antes de qualquer renderização, e aplica em sequência as funções de `MIGRACOES` entre a versão salva e `SCHEMA_VERSION`. Antes de escrever qualquer coisa, ela salva uma cópia bruta na chave `resgate_dados`. Se uma migração lançar erro, nada é sobrescrito: os dados originais continuam intactos nas chaves normais, e a pessoa vê um aviso de que existe uma cópia de segurança. Ao mudar o formato de uma chave do `Store`, adicione uma função nova em `MIGRACOES` no salto de versão correspondente, nunca reescreva os dados direto.
+
 ## Depuração
 
-No console do navegador: `MT.session`, `MT.history`, `MT.profile`, `MT.program`, `MT.gerar(MT.profile)`, `MT.volume(MT.program)`.
+No console do navegador: `MT.session`, `MT.history`, `MT.profile`, `MT.program`, `MT.gerar(MT.profile)`, `MT.volume(MT.program)`, `MT.schemaVersion`.
 
 ## Testes
 
@@ -55,7 +57,8 @@ O teste do gerador verifica nove propriedades por programa: equipamento disponí
 
 - Não crie backend, login ou banco de dados sem que isso seja pedido explicitamente. O app é offline-first por decisão de projeto.
 - Não coloque chave de API no código. O site é estático e público, qualquer chave fica visível.
-- Não mude os nomes das chaves do `Store` (`history`, `profile`, `program`, `overrides`, `custom_ex`, `corpo`, `settings`, `active_session`) sem escrever a migração, senão o usuário perde os dados.
+- Não mude os nomes das chaves do `Store` (`history`, `profile`, `program`, `overrides`, `custom_ex`, `corpo`, `settings`, `active_session`, `favoritos`, `schemaVersion`, `resgate_dados`) sem escrever a migração, senão o usuário perde os dados.
+- Toda mudança no formato de uma chave do `Store` precisa de uma função nova em `MIGRACOES` (`app.js`) e subir o `SCHEMA_VERSION`. Ver a seção "Versionamento dos dados" abaixo.
 - Não remova o aviso de que o app não substitui avaliação profissional.
 
 ## Próximos passos planejados

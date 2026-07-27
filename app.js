@@ -299,6 +299,54 @@ const Store = {
 };
 
 /* -------------------------------------------------------------------------
+   3b. VERSIONAMENTO DOS DADOS
+   schemaVersion fica gravado no Store. Cada salto de versao tem uma funcao
+   em MIGRACOES que recebe o objeto com todas as chaves de dados e devolve
+   o objeto migrado. Se uma migracao falhar, os dados originais nao sao
+   tocados: uma copia bruta vai para a chave de resgate antes de qualquer
+   escrita, e a pessoa e avisada que existe uma copia recuperavel.
+   ------------------------------------------------------------------------- */
+const SCHEMA_VERSION = 1;
+const CHAVES_DADOS = ['history', 'profile', 'corpo', 'overrides', 'custom_ex', 'program', 'favoritos', 'settings'];
+
+const MIGRACOES = {
+  // de "sem versao" (quem instalou antes deste recurso existir) para 1:
+  // so passa a registrar a versao, o formato dos dados em si nao muda
+  1: async dados => dados
+};
+
+async function lerDadosBrutos(){
+  const entradas = await Promise.all(CHAVES_DADOS.map(k => Store.get(k)));
+  const dados = {};
+  CHAVES_DADOS.forEach((k, i) => { dados[k] = entradas[i]; });
+  return dados;
+}
+
+async function migrarDados(alvoVersao){
+  alvoVersao = alvoVersao || SCHEMA_VERSION;
+  let versaoAtual = await Store.get('schemaVersion');
+  if(typeof versaoAtual !== 'number') versaoAtual = 0;
+  if(versaoAtual >= alvoVersao) return {ok: true, versao: versaoAtual};
+
+  const bruto = await lerDadosBrutos();
+  await Store.set('resgate_dados', {versaoOrigem: versaoAtual, quando: new Date().toISOString(), dados: bruto});
+
+  try{
+    let dados = bruto;
+    for(let v = versaoAtual + 1; v <= alvoVersao; v++){
+      const passo = MIGRACOES[v];
+      if(passo) dados = await passo(dados);
+    }
+    await Promise.all(CHAVES_DADOS.map(k => dados[k] !== undefined ? Store.set(k, dados[k]) : Promise.resolve()));
+    await Store.set('schemaVersion', alvoVersao);
+    await Store.del('resgate_dados');
+    return {ok: true, versao: alvoVersao};
+  }catch(e){
+    return {ok: false, erro: e, versaoOrigem: versaoAtual};
+  }
+}
+
+/* -------------------------------------------------------------------------
    4. ESTADO
    ------------------------------------------------------------------------- */
 let history = [];
@@ -2121,6 +2169,8 @@ $('btn-install').onclick = async () => {
    21. BOOT
    ------------------------------------------------------------------------- */
 async function boot(){
+  const migracao = await migrarDados();
+
   const [h, s, active, ov, cx, pf, cp, pg, fv] = await Promise.all([
     Store.get('history'), Store.get('settings'), Store.get('active_session'),
     Store.get('overrides'), Store.get('custom_ex'), Store.get('profile'), Store.get('corpo'),
@@ -2150,6 +2200,9 @@ async function boot(){
   atualizarAjustes();
   prepararFeedback();
   if(!profile) abrirOnboarding(false);
+  if(!migracao.ok){
+    toast('Não consegui atualizar o formato dos seus dados, mas nada foi apagado. Existe uma cópia de segurança salva no aparelho. Avise pelo botão de feedback em Ajustes.');
+  }
 
   if('serviceWorker' in navigator){
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
@@ -3158,7 +3211,9 @@ window.MT = {
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
   gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
   exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
-  saude: calcularSaude
+  saude: calcularSaude,
+  get schemaVersion(){ return SCHEMA_VERSION; },
+  MIGRACOES: MIGRACOES, migrarDados: migrarDados, lerDadosBrutos: lerDadosBrutos
 };
 
 boot();
