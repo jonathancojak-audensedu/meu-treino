@@ -354,6 +354,7 @@ let settings = {sound:true, wake:true};
 let overrides = {};
 let customEx = {};
 let favoritos = {};
+let erros = [];
 let session = null;
 let previewKey = null;
 let editState = null;
@@ -1965,6 +1966,66 @@ async function resetProgram(){
 }
 
 /* -------------------------------------------------------------------------
+   19b. DIAGNÓSTICO E ERROS
+   Sem backend, um erro no aparelho de outra pessoa é invisível para quem
+   mantém o app. Guarda só mensagem, tipo e origem do erro, nunca dado de
+   treino, perfil ou medida corporal.
+   ------------------------------------------------------------------------- */
+function registrarErro(info){
+  erros.unshift(Object.assign({quando: new Date().toISOString()}, info));
+  erros = erros.slice(0, 20);
+  Store.set('erros_recentes', erros);
+}
+window.addEventListener('error', e => {
+  registrarErro({tipo: 'erro', mensagem: e.message || 'erro sem mensagem', origem: (e.filename || '') + (e.lineno ? ':' + e.lineno : '')});
+});
+window.addEventListener('unhandledrejection', e => {
+  const motivo = e.reason;
+  registrarErro({tipo: 'promessa', mensagem: (motivo && motivo.message) ? motivo.message : String(motivo), origem: ''});
+});
+
+function formatarBytes(n){
+  if(!(n > 0)) return '0 KB';
+  const mb = n / (1024 * 1024);
+  return mb < 1 ? Math.round(n / 1024) + ' KB' : mb.toFixed(1).replace('.', ',') + ' MB';
+}
+async function obterUsoArmazenamento(){
+  try{
+    if(navigator.storage && navigator.storage.estimate){
+      const est = await navigator.storage.estimate();
+      return formatarBytes(est.usage || 0);
+    }
+  }catch(e){ /* ignora */ }
+  return 'não disponível neste navegador';
+}
+
+async function abrirDiagnostico(){
+  const el = $('sheet-backdrop');
+  const versao = await obterVersaoApp();
+  const uso = await obterUsoArmazenamento();
+  const standalone = mq('(display-mode: standalone)') || window.navigator.standalone === true;
+  const fmtQuando = iso => new Date(iso).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  const listaErros = erros.length
+    ? erros.map(e => '<div class="onb-linha"><span>' + fmtQuando(e.quando) + ' · ' + esc(e.tipo) + '</span><span>' + esc(e.mensagem) + '</span></div>').join('')
+    : '<div class="onb-linha"><span>Nenhum erro registrado</span><span>bom sinal</span></div>';
+
+  $('sheet-body').innerHTML =
+    '<div class="sheethead"><h2 id="sheet-title">Diagnóstico</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    '<p>Informações técnicas para ajudar a resolver um problema. Nada do seu treino, perfil ou medidas corporais aparece aqui.</p>' +
+    '<div class="onb-resumo">' +
+      '<div class="onb-linha"><span>Versão</span><span>' + esc(versao) + '</span></div>' +
+      '<div class="onb-linha"><span>Modo</span><span>' + (standalone ? 'instalado' : 'navegador') + '</span></div>' +
+      '<div class="onb-linha"><span>Armazenamento usado</span><span>' + esc(uso) + '</span></div>' +
+    '</div>' +
+    '<div class="sumsection">Erros recentes (' + erros.length + ')</div>' +
+    '<div class="onb-resumo">' + listaErros + '</div>' +
+    '<div class="sheetact" style="margin-top:16px"><button class="btn-ghost" data-fechar="1">Fechar</button></div>';
+  openBackdrop(el, null, true);
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+}
+
+/* -------------------------------------------------------------------------
    20. EVENTOS
    ------------------------------------------------------------------------- */
 $('daylist').addEventListener('click', e => {
@@ -2119,6 +2180,7 @@ $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = e => { const f = e.target.files[0]; if(f) importBackup(f); e.target.value = ''; };
 $('btn-wipe').onclick = wipeAll;
 $('btn-resetprog').onclick = refazerPrograma;
+$('btn-diagnostico').onclick = abrirDiagnostico;
 
 function bindSwitch(id, key, onChange){
   const el = $(id);
@@ -2171,10 +2233,10 @@ $('btn-install').onclick = async () => {
 async function boot(){
   const migracao = await migrarDados();
 
-  const [h, s, active, ov, cx, pf, cp, pg, fv] = await Promise.all([
+  const [h, s, active, ov, cx, pf, cp, pg, fv, er] = await Promise.all([
     Store.get('history'), Store.get('settings'), Store.get('active_session'),
     Store.get('overrides'), Store.get('custom_ex'), Store.get('profile'), Store.get('corpo'),
-    Store.get('program'), Store.get('favoritos')
+    Store.get('program'), Store.get('favoritos'), Store.get('erros_recentes')
   ]);
   if(Array.isArray(pg) && pg.length) PROGRAM = pg;
   profile = (pf && typeof pf === 'object') ? pf : null;
@@ -2184,6 +2246,7 @@ async function boot(){
   if(ov && typeof ov === 'object') overrides = ov;
   if(cx && typeof cx === 'object') customEx = cx;
   if(fv && typeof fv === 'object') favoritos = fv;
+  if(Array.isArray(er)) erros = er;
   $('sw-sound').setAttribute('aria-checked', settings.sound ? 'true' : 'false');
   $('sw-wake').setAttribute('aria-checked', settings.wake ? 'true' : 'false');
 
@@ -2222,11 +2285,17 @@ async function prepararFeedback(){
   const el = $('btn-feedback');
   if(!el) return;
   const versao = await obterVersaoApp();
+  const uso = await obterUsoArmazenamento();
   const standalone = mq('(display-mode: standalone)') || window.navigator.standalone === true;
+  const resumoErros = erros.length
+    ? erros.slice(0, 5).map(e => '- ' + e.quando.slice(0, 16).replace('T', ' ') + ' ' + e.tipo + ': ' + e.mensagem).join('\n')
+    : 'nenhum erro recente';
   const msg = 'Feedback do Meu Treino\n' +
     'Versão: ' + versao + '\n' +
     'Modo: ' + (standalone ? 'instalado' : 'navegador') + '\n' +
-    'Aparelho: ' + navigator.userAgent + '\n\n' +
+    'Armazenamento usado: ' + uso + '\n' +
+    'Aparelho: ' + navigator.userAgent + '\n' +
+    'Erros recentes (' + erros.length + '):\n' + resumoErros + '\n\n' +
     'Descreva aqui o que encontrou:';
   el.href = 'https://wa.me/' + FEEDBACK_NUMERO + '?text=' + encodeURIComponent(msg);
 }
@@ -3213,7 +3282,9 @@ window.MT = {
   exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
   saude: calcularSaude,
   get schemaVersion(){ return SCHEMA_VERSION; },
-  MIGRACOES: MIGRACOES, migrarDados: migrarDados, lerDadosBrutos: lerDadosBrutos
+  MIGRACOES: MIGRACOES, migrarDados: migrarDados, lerDadosBrutos: lerDadosBrutos,
+  get erros(){ return erros; },
+  registrarErro: registrarErro, formatarBytes: formatarBytes, obterUsoArmazenamento: obterUsoArmazenamento
 };
 
 boot();

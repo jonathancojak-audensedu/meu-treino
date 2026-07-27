@@ -37,7 +37,7 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 
 ## Depuração
 
-No console do navegador: `MT.session`, `MT.history`, `MT.profile`, `MT.program`, `MT.gerar(MT.profile)`, `MT.volume(MT.program)`, `MT.schemaVersion`.
+No console do navegador: `MT.session`, `MT.history`, `MT.profile`, `MT.program`, `MT.gerar(MT.profile)`, `MT.volume(MT.program)`, `MT.schemaVersion`, `MT.erros`.
 
 ## Testes
 
