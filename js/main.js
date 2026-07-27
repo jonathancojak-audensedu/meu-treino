@@ -1,7 +1,11 @@
 /* =========================================================================
-   MEU TREINO v2
-   Sessão editável (ordem, troca, inclusão e exclusão de exercícios),
-   descanso agendado no relógio de áudio, treino livre e recordes.
+   MEU TREINO
+   Ponto de entrada do app: boot(), tela inicial, backup, diagnóstico de
+   erros, ligação de todos os eventos e o objeto window.MT de depuração.
+   O resto do app vive nos módulos que este arquivo importa: catalog.js
+   (catálogo), generator.js (gerador), store.js (armazenamento), ui.js
+   (folhas/toast), history.js (histórico), session.js (sessão de treino)
+   e onboarding.js (perfil e dados corporais).
    ========================================================================= */
 
 import { EX, META, EQUIP } from './catalog.js';
@@ -108,21 +112,11 @@ const byKey = k => PROGRAM.find(w => w.key === k);
 function setPROGRAM(novo){ PROGRAM = Array.isArray(novo) ? novo : PROGRAM; }
 
 /* -------------------------------------------------------------------------
-   ARMAZENAMENTO em js/store.js: Store (IndexedDB com localStorage de
-   reserva), versionamento (SCHEMA_VERSION, MIGRACOES, migrarDados) e o
-   formato de payload do backup (construirPayloadBackup, lerArquivoBackup).
-   ------------------------------------------------------------------------- */
-
-
-/* -------------------------------------------------------------------------
    4. ESTADO
    ------------------------------------------------------------------------- */
 let settings = {sound:true, wake:true};
 let erros = [];
 let deferredInstall = null;
-
-
-
 
 function daysAgo(iso){
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -218,23 +212,6 @@ function atualizarCabecalhoHome(){
   else if(d === 4) nota.textContent = 'Com 4 dias, faça Upper A, Lower A, Upper B e Lower B. Os treinos C ficam como variação para quando sobrar tempo.';
   else nota.textContent = 'Com ' + d + ' dias, alterne entre os treinos na ordem em que aparecem, sem se preocupar em fechar a semana toda. O programa sob medida para essa frequência chega nos próximos passos.';
 }
-
-
-
-
-
-
-
-
-/* -------------------------------------------------------------------------
-   histórico, evolução e calendário agora em js/history.js
-   ------------------------------------------------------------------------- */
-
-
-/* -------------------------------------------------------------------------
-   openBackdrop, askConfirm e toast agora em js/ui.js
-   ------------------------------------------------------------------------- */
-
 
 /* -------------------------------------------------------------------------
    19. BACKUP
@@ -633,21 +610,8 @@ function updateStorageLabel(){
   $('storage-label').textContent = label;
 }
 
-/* =========================================================================
-   GERADOR DE PROGRAMA em js/generator.js: gerarPrograma, tempoEstimado,
-   volumeSemanal e as tabelas de PARAMS/MODELOS/SPLITS. Função pura, não
-   toca em tela nem em armazenamento, o que permite testar sem navegador.
-   ========================================================================= */
-
-
-
 /* -------------------------------------------------------------------------
-   onboarding, perfil, dados corporais e IMC/TMB agora em js/onboarding.js
-   ------------------------------------------------------------------------- */
-
-
-/* -------------------------------------------------------------------------
-   Eventos
+   Eventos do onboarding (fluxo em si mora em js/onboarding.js)
    ------------------------------------------------------------------------- */
 $('onb-back').onclick = voltar;
 $('onb-body').addEventListener('click', e => {
