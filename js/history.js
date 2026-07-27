@@ -60,24 +60,32 @@ function renderHistory(){
   }).join('');
 }
 
-function editarDataTreino(id){
+/* edita inicio e fim de um treino ja registrado, recalculando a duracao.
+   usada tanto pelo historico quanto pelo botao "editar horario" do resumo
+   logo depois de finalizar (o item ja esta salvo nesse ponto, so ajusta) */
+async function editarDataTreino(id, aoSalvar){
   const entry = history.find(h => h.id === id);
   if(!entry) return;
-  const d = new Date(entry.date);
+  const fim = new Date(entry.date);
+  const inicio = new Date(fim.getTime() - entry.duration * 1000);
   const pad = n => String(n).padStart(2, '0');
-  const dataVal = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-  const horaVal = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const dataDe = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const horaDe = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
   const hoje = new Date();
-  const dataMax = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
+  const dataMax = dataDe(hoje);
 
   const el = $('sheet-backdrop');
   $('sheet-body').innerHTML =
-    '<div class="sheethead"><h2 id="sheet-title">Editar data e horário</h2>' +
+    '<div class="sheethead"><h2 id="sheet-title">Editar início e fim</h2>' +
     '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
-    '<p>Ajusta quando esse treino aconteceu de verdade. Serve pra registrar um treino que você esqueceu de fechar na hora.</p>' +
+    '<p>Ajusta quando esse treino começou e terminou de verdade. Serve pra registrar um treino que você esqueceu de iniciar ou fechar na hora. A duração é recalculada.</p>' +
     '<div class="onb-opts">' +
-      '<input class="onb-input" id="ed-data" type="date" max="' + dataMax + '" value="' + dataVal + '">' +
-      '<input class="onb-input" id="ed-hora" type="time" value="' + horaVal + '">' +
+      '<div class="editlabel">Início</div>' +
+      '<input class="onb-input" id="ed-data-ini" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(inicio) + '">' +
+      '<input class="onb-input" id="ed-hora-ini" type="time" inputmode="numeric" value="' + horaDe(inicio) + '">' +
+      '<div class="editlabel" style="margin-top:10px">Fim</div>' +
+      '<input class="onb-input" id="ed-data-fim" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(fim) + '">' +
+      '<input class="onb-input" id="ed-hora-fim" type="time" inputmode="numeric" value="' + horaDe(fim) + '">' +
     '</div>' +
     '<div class="sheetact" style="margin-top:16px">' +
       '<button class="btn-ghost" data-fechar="1">Cancelar</button>' +
@@ -86,18 +94,32 @@ function editarDataTreino(id){
   openBackdrop(el, null, true);
   $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
   $('ed-salvar').onclick = async () => {
-    const dataStr = $('ed-data').value, horaStr = $('ed-hora').value;
-    if(!dataStr || !horaStr){ toast('Preencha data e horário'); return; }
-    const nova = new Date(dataStr + 'T' + horaStr);
-    if(isNaN(nova.getTime())){ toast('Data inválida'); return; }
-    if(nova.getTime() > Date.now()){ toast('A data não pode ser no futuro'); return; }
-    entry.date = nova.toISOString();
+    const dataIni = $('ed-data-ini').value, horaIni = $('ed-hora-ini').value;
+    const dataFim = $('ed-data-fim').value, horaFim = $('ed-hora-fim').value;
+    if(!dataIni || !horaIni || !dataFim || !horaFim){ toast('Preencha início e fim'); return; }
+    const novoInicio = new Date(dataIni + 'T' + horaIni);
+    const novoFim = new Date(dataFim + 'T' + horaFim);
+    if(isNaN(novoInicio.getTime()) || isNaN(novoFim.getTime())){ toast('Data inválida'); return; }
+    if(novoFim.getTime() > Date.now()){ toast('O fim não pode ser no futuro'); return; }
+    if(novoFim.getTime() <= novoInicio.getTime()){ toast('O fim precisa ser depois do início'); return; }
+    const novaDuracao = Math.round((novoFim.getTime() - novoInicio.getTime()) / 1000);
+    if(novaDuracao > 5 * 3600){
+      const ok = await askConfirm({
+        title: 'Treino de mais de 5 horas?',
+        text: 'Com esses horários a duração fica bem longa. Confirma mesmo assim?',
+        confirmLabel: 'Confirmar'
+      });
+      if(!ok) return;
+    }
+    entry.date = novoFim.toISOString();
+    entry.duration = novaDuracao;
     history.sort((a, b) => new Date(b.date) - new Date(a.date));
     await saveHistory();
     fecharSheetAtual();
     renderHistory();
     renderHome();
-    toast('Data atualizada');
+    if(aoSalvar) aoSalvar(entry);
+    toast('Horário atualizado');
   };
 }
 

@@ -9,7 +9,7 @@ import {
   $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser,
   unitOf, fmtRest, fmtSet, summarizeSets
 } from './ui.js';
-import { history, saveHistory, renderHistory, exerciciosComHistorico } from './history.js';
+import { history, saveHistory, renderHistory, exerciciosComHistorico, editarDataTreino } from './history.js';
 import { byKey, PROGRAM, showScreen, updateTrainingBadge, settings, renderHome } from './main.js';
 
 let overrides = {};
@@ -569,6 +569,55 @@ function tickDuration(){
   $('sess-timer').textContent = (h ? h + ':' + String(m).padStart(2,'0') : String(m).padStart(2,'0')) + ':' + String(s).padStart(2,'0');
 }
 
+/* tocar no cronometro da sessao ativa abre a edicao do horario de inicio,
+   pra quem esquece de tocar em Comecar na hora certa */
+function abrirEdicaoInicio(){
+  if(!session || !session.startedAt) return;
+  const el = $('sheet-backdrop');
+  const d = new Date(session.startedAt);
+  const pad = n => String(n).padStart(2, '0');
+  const dataVal = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const horaVal = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const agora = new Date();
+  const dataMax = agora.getFullYear() + '-' + pad(agora.getMonth() + 1) + '-' + pad(agora.getDate());
+
+  $('sheet-body').innerHTML =
+    '<div class="sheethead"><h2 id="sheet-title">Editar início do treino</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    '<p>Ajusta quando você começou de verdade, se esqueceu de tocar em Começar na hora.</p>' +
+    '<div class="onb-opts">' +
+      '<input class="onb-input" id="ini-data" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataVal + '">' +
+      '<input class="onb-input" id="ini-hora" type="time" inputmode="numeric" value="' + horaVal + '">' +
+    '</div>' +
+    '<div class="sheetact" style="margin-top:16px">' +
+      '<button class="btn-ghost" data-fechar="1">Cancelar</button>' +
+      '<button class="btn-primary" id="ini-salvar">Salvar</button>' +
+    '</div>';
+  openBackdrop(el, null, true);
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
+  $('ini-salvar').onclick = async () => {
+    const dataStr = $('ini-data').value, horaStr = $('ini-hora').value;
+    if(!dataStr || !horaStr){ toast('Preencha data e horário'); return; }
+    const novo = new Date(dataStr + 'T' + horaStr);
+    if(isNaN(novo.getTime())){ toast('Data inválida'); return; }
+    if(novo.getTime() > Date.now()){ toast('O início não pode ser no futuro'); return; }
+    const duracaoHoras = (Date.now() - novo.getTime()) / 3600000;
+    if(duracaoHoras > 5){
+      const ok = await askConfirm({
+        title: 'Treino de mais de 5 horas?',
+        text: 'Com esse início a duração fica bem longa. Confirma mesmo assim?',
+        confirmLabel: 'Confirmar'
+      });
+      if(!ok) return;
+    }
+    session.startedAt = novo.getTime();
+    saveSession(true);
+    tickDuration();
+    fecharSheetAtual();
+    toast('Início atualizado');
+  };
+}
+
 /* -------------------------------------------------------------------------
    12. DESCANSO
    O bipe é agendado no relógio do AudioContext, então toca na hora certa
@@ -1121,7 +1170,7 @@ function renderSummary(entry, previous, prs, todayCount){
   }
 
   html += '<div class="sumgrid">' +
-      '<div class="c"><div class="v">' + mins + ' min</div><div class="l">Duração</div></div>' +
+      '<button class="c editavel" id="sum-editar-horario" type="button" aria-label="Editar início e fim do treino"><div class="v">' + mins + ' min</div><div class="l">Duração</div></button>' +
       '<div class="c"><div class="v">' + entry.setsDone + '</div><div class="l">Séries</div></div>' +
       '<div class="c"><div class="v">' + entry.volume + '</div><div class="l">Volume kg</div></div>' +
       (entry.cardioMin ? '<div class="c"><div class="v">' + entry.cardioMin + '</div><div class="l">Cardio min</div></div>' : '') +
@@ -1141,6 +1190,9 @@ function renderSummary(entry, previous, prs, todayCount){
     '</div></div>';
 
   $('sumwrap').innerHTML = html;
+  $('sum-editar-horario').onclick = () => editarDataTreino(entry.id, atualizado => {
+    $('sum-editar-horario').querySelector('.v').textContent = Math.round(atualizado.duration / 60) + ' min';
+  });
 }
 
 function setOverrides(novo){ overrides = (novo && typeof novo === 'object') ? novo : {}; }
@@ -1160,7 +1212,7 @@ export {
   openPreview, openEdit, cancelEdit, saveEdit, editMoveItem, editRemoveItem, editSwapExercise,
   editAddExercise, editAddSet, editDelSet, editRestStep,
   beginSession, startFreeSession, resumeSession, renderSession, updateStats, startDurationTimer,
-  tickDuration, tickRest, requestWake,
+  tickDuration, abrirEdicaoInicio, tickRest, requestWake,
   toggleRestExpand, addRest, skipRest, releaseWake,
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,

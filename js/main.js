@@ -25,7 +25,7 @@ import {
   openPreview, openEdit, cancelEdit, saveEdit, editMoveItem, editRemoveItem, editSwapExercise,
   editAddExercise, editAddSet, editDelSet, editRestStep,
   beginSession, startFreeSession, resumeSession, renderSession, updateStats, startDurationTimer,
-  tickDuration, tickRest, requestWake,
+  tickDuration, abrirEdicaoInicio, tickRest, requestWake,
   toggleRestExpand, addRest, skipRest, releaseWake,
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
@@ -455,6 +455,7 @@ $('evolist').addEventListener('click', e => {
 $('btn-begin').onclick = beginSession;
 $('btn-cancel').onclick = cancelWorkout;
 $('btn-finish').onclick = finishWorkout;
+$('sess-timer-btn').onclick = abrirEdicaoInicio;
 $('session-back').onclick = leaveSession;
 $('btn-editprog').onclick = () => openEdit(previewKey);
 $('btn-canceledit').onclick = cancelEdit;
