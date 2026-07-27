@@ -7,7 +7,7 @@
 import { EX, META, EQUIP } from './catalog.js';
 import { gerarPrograma, tempoEstimado, volumeSemanal, PARAMS, MODELOS, SPLITS, SPLITS_CORPO } from './generator.js';
 import { Store, dbBroken, SCHEMA_VERSION, MIGRACOES, migrarDados, lerDadosBrutos, construirPayloadBackup, baixarJSON, lerArquivoBackup } from './store.js';
-import { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser } from './ui.js';
+import { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, unitOf, fmtRest, fmtSet, summarizeSets } from './ui.js';
 
 /* Número que recebe o feedback pelo WhatsApp (wa.me), só dígitos com DDI e DDD. */
 const FEEDBACK_NUMERO = '5581986501624';
@@ -151,11 +151,6 @@ function shapeOf(i){
   return base;
 }
 function newUid(){ return 'e' + (uidSeq++) + Math.random().toString(36).slice(2, 6); }
-function unitOf(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : type === 'cardio' ? 'min' : 'reps'; }
-function fmtRest(sec){
-  if(sec >= 60){ const m = Math.floor(sec/60), s = sec%60; return s ? m + ':' + String(s).padStart(2,'0') : m + ' min'; }
-  return sec + 's';
-}
 function videoUrl(name){
   return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' execução correta técnica');
 }
@@ -390,16 +385,6 @@ function openPreview(key){
   $('finishbar').style.display = 'none';
   $('editbar').style.display = 'none';
   showScreen('session');
-}
-function fmtSet(s, type){
-  if(type === 'cardio') return (s.w ? esc(s.w) + 'km · ' : '') + esc(s.r) + 'min';
-  const u = unitOf(type);
-  return s.w
-    ? esc(s.w) + 'kg x ' + esc(s.r) + (u === 'reps' ? '' : u)
-    : esc(s.r) + (u === 'reps' ? ' reps' : u);
-}
-function summarizeSets(sets, type){
-  return sets.slice(0, 4).map(s => fmtSet(s, type)).join(' · ');
 }
 
 /* -------------------------------------------------------------------------

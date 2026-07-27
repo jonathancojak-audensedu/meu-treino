@@ -62,4 +62,24 @@ function toast(msg, actionLabel, cb){
   toastTimer = setTimeout(() => t.classList.remove('show'), actionLabel ? 5000 : 2800);
 }
 
-export { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser };
+/* -------------------------------------------------------------------------
+   formatação de séries e descanso, usada por sessão e histórico
+   ------------------------------------------------------------------------- */
+function unitOf(type){ return type === 'time' ? 's' : type === 'dist' ? 'm' : type === 'cardio' ? 'min' : 'reps'; }
+function fmtRest(sec){
+  if(sec >= 60){ const m = Math.floor(sec/60), s = sec%60; return s ? m + ':' + String(s).padStart(2,'0') : m + ' min'; }
+  return sec + 's';
+}
+
+function fmtSet(s, type){
+  if(type === 'cardio') return (s.w ? esc(s.w) + 'km · ' : '') + esc(s.r) + 'min';
+  const u = unitOf(type);
+  return s.w
+    ? esc(s.w) + 'kg x ' + esc(s.r) + (u === 'reps' ? '' : u)
+    : esc(s.r) + (u === 'reps' ? ' reps' : u);
+}
+function summarizeSets(sets, type){
+  return sets.slice(0, 4).map(s => fmtSet(s, type)).join(' · ');
+}
+
+export { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, unitOf, fmtRest, fmtSet, summarizeSets };
