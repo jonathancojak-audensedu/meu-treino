@@ -7,6 +7,7 @@
 import { EX, META, EQUIP } from './catalog.js';
 import { gerarPrograma, tempoEstimado, volumeSemanal, PARAMS, MODELOS, SPLITS, SPLITS_CORPO } from './generator.js';
 import { Store, dbBroken, SCHEMA_VERSION, MIGRACOES, migrarDados, lerDadosBrutos, construirPayloadBackup, baixarJSON, lerArquivoBackup } from './store.js';
+import { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser } from './ui.js';
 
 /* Número que recebe o feedback pelo WhatsApp (wa.me), só dígitos com DDI e DDD. */
 const FEEDBACK_NUMERO = '5581986501624';
@@ -109,16 +110,9 @@ let calViewDate = new Date();
 let historyTab = 'lista';
 let uidSeq = 1;
 let lastRemoved = null;
-let backdropCloser = null;
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const defOf = id => EX[id] || customEx[id] || {name:'Exercício', type:'reps', group:''};
 
-function mq(query){
-  try{ return !!(window.matchMedia && window.matchMedia(query).matches); }
-  catch(e){ return false; }
-}
 
 /* -------------------------------------------------------------------------
    5. PERSISTÊNCIA DA SESSÃO
@@ -1142,7 +1136,7 @@ function pickExercise(title, suggested, replacing){
     draw('');
 
     let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); backdropCloser = null; resolve(v || null); };
+    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); invalidarBackdropCloser(); resolve(v || null); };
     openBackdrop(el, () => done(null), true);
 
     $('ex-search').oninput = ev => draw(ev.target.value);
@@ -1405,7 +1399,7 @@ function editarDataTreino(id){
       '<button class="btn-primary" id="ed-salvar">Salvar</button>' +
     '</div>';
   openBackdrop(el, null, true);
-  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
   $('ed-salvar').onclick = async () => {
     const dataStr = $('ed-data').value, horaStr = $('ed-hora').value;
     if(!dataStr || !horaStr){ toast('Preencha data e horário'); return; }
@@ -1415,7 +1409,7 @@ function editarDataTreino(id){
     entry.date = nova.toISOString();
     history.sort((a, b) => new Date(b.date) - new Date(a.date));
     await saveHistory();
-    if(backdropCloser) backdropCloser();
+    fecharSheetAtual();
     renderHistory();
     renderHome();
     toast('Data atualizada');
@@ -1607,46 +1601,9 @@ function renderCalendar(){
 }
 
 /* -------------------------------------------------------------------------
-   18. FOLHAS, CONFIRMAÇÃO E TOAST
+   openBackdrop, askConfirm e toast agora em js/ui.js
    ------------------------------------------------------------------------- */
-function openBackdrop(el, onClose, skipFocus){
-  el.classList.add('show');
-  backdropCloser = () => { el.classList.remove('show'); backdropCloser = null; if(onClose) onClose(); };
-  el.onclick = e => { if(e.target === el) backdropCloser(); };
-  if(!skipFocus){
-    const focusable = el.querySelector('button, input, a');
-    if(focusable) setTimeout(() => focusable.focus(), 40);
-  }
-}
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && backdropCloser) backdropCloser(); });
 
-function askConfirm(opts){
-  return new Promise(resolve => {
-    const el = $('sheet-backdrop');
-    $('sheet-body').innerHTML =
-      '<h2 id="sheet-title">' + esc(opts.title) + '</h2>' +
-      '<p>' + esc(opts.text || '') + '</p>' +
-      '<div class="sheetact">' +
-        (opts.hideCancel ? '' : '<button class="btn-ghost" data-r="0">Voltar</button>') +
-        '<button class="' + (opts.danger ? 'btn-danger' : 'btn-primary') + '" data-r="1">' + esc(opts.confirmLabel || 'Confirmar') + '</button>' +
-      '</div>';
-    let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); backdropCloser = null; resolve(v); };
-    openBackdrop(el, () => done(false));
-    $('sheet-body').querySelectorAll('[data-r]').forEach(b => b.onclick = () => done(b.dataset.r === '1'));
-  });
-}
-
-let toastTimer = null;
-function toast(msg, actionLabel, cb){
-  const t = $('toast');
-  t.innerHTML = '<span>' + esc(msg) + '</span>' +
-    (actionLabel ? '<button class="toastact" id="toast-act">' + esc(actionLabel) + '</button>' : '');
-  t.classList.add('show');
-  if(actionLabel && cb) $('toast-act').onclick = () => { t.classList.remove('show'); cb(); };
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), actionLabel ? 5000 : 2800);
-}
 
 /* -------------------------------------------------------------------------
    19. BACKUP
@@ -1760,7 +1717,7 @@ async function abrirDiagnostico(){
     '<div class="onb-resumo">' + listaErros + '</div>' +
     '<div class="sheetact" style="margin-top:16px"><button class="btn-ghost" data-fechar="1">Fechar</button></div>';
   openBackdrop(el, null, true);
-  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
 }
 
 /* -------------------------------------------------------------------------
@@ -1909,7 +1866,7 @@ $('tab-evolucao').onclick = () => showHistoryTab('evolucao');
 $('nav-settings').onclick = () => { prepararFeedback(); showScreen('settings'); };
 
 $('btn-calendar').onclick = openCalendar;
-$('cal-close').onclick = () => backdropCloser && backdropCloser();
+$('cal-close').onclick = () => fecharSheetAtual();
 $('cal-prev').onclick = () => { calViewDate.setMonth(calViewDate.getMonth() - 1); renderCalendar(); };
 $('cal-next').onclick = () => { calViewDate.setMonth(calViewDate.getMonth() + 1); renderCalendar(); };
 
@@ -2338,7 +2295,7 @@ function mostrarProgramaNovo(){
     '<div class="onb-resumo">' + linhas + '</div>' +
     '<div class="sheetact" style="margin-top:16px"><button class="btn-primary" id="prog-ok">Ver meus treinos</button></div>';
   openBackdrop($('sheet-backdrop'), null, true);
-  $('prog-ok').onclick = () => backdropCloser && backdropCloser();
+  $('prog-ok').onclick = () => fecharSheetAtual();
 }
 
 async function refazerPrograma(){
@@ -2433,7 +2390,7 @@ function abrirDadosCorporais(){
     $('sheet-body').querySelectorAll('[data-sexo]').forEach(x => x.classList.toggle('sel', x === b));
     atualizarResultados();
   });
-  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => backdropCloser && backdropCloser());
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
   ['c-idade','c-altura','c-peso'].forEach(id => $(id).addEventListener('input', atualizarResultados));
   atualizarResultados();
   $('c-salvar').onclick = async () => {
@@ -2444,7 +2401,7 @@ function abrirDadosCorporais(){
       sexo: sexo
     };
     await Store.set('corpo', corpo);
-    if(backdropCloser) backdropCloser();
+    fecharSheetAtual();
     atualizarAjustes();
     toast('Dados salvos');
   };
