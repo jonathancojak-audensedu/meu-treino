@@ -24,6 +24,7 @@ register('./_loader.mjs', pathToFileURL(__filename));
 
 const REPO = path.join(__dirname, '..') + '/';
 const HTML = fs.readFileSync(REPO + 'index.html', 'utf8');
+const CSS = fs.readFileSync(REPO + 'css/app.css', 'utf8');
 const MAIN_JS = path.join(REPO, 'js', 'main.js');
 
 let contadorBoot = 0;
@@ -58,6 +59,12 @@ async function boot(storage, customizar, opcoes){
 
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
   const w = dom.window;
+  // jsdom nao busca <link rel="stylesheet"> sozinho; injeta o css/app.css
+  // direto como <style>, senao testes que medem estilo computado (ex: altura
+  // de alvo de toque) veem tudo em branco desde que o css saiu do index.html
+  const estilo = w.document.createElement('style');
+  estilo.textContent = CSS;
+  w.document.head.appendChild(estilo);
   w.HTMLElement.prototype.scrollIntoView = function(){};
   w.scrollTo = function(){};
   w.navigator.vibrate = () => true;
