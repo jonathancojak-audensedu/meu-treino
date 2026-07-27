@@ -1,30 +1,12 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  w.caches = {keys: () => Promise.resolve(['meu-treino-v17'])};
-  w.navigator.storage = {estimate: () => Promise.resolve({usage: 2 * 1024 * 1024})};
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
-  await wait(120);
+  const w = await boot(null, w => {
+    w.caches = {keys: () => Promise.resolve(['meu-treino-v17'])};
+    w.navigator.storage = {estimate: () => Promise.resolve({usage: 2 * 1024 * 1024})};
+  });
+  const $ = seletor(w);
 
   console.log('\n== erro em tempo de execucao (window.onerror) fica registrado ==');
   check('comeca sem erros', w.MT.erros.length === 0);
@@ -56,7 +38,9 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
     Object.keys(w.MT.erros[0]).every(k => ['tipo','mensagem','origem','quando'].indexOf(k) !== -1));
 
   console.log('\n== tela de diagnostico mostra versao, modo, armazenamento e erros ==');
-  w.eval('abrirDiagnostico()');
+  $('nav-settings').click();
+  await wait(20);
+  $('btn-diagnostico').click();
   await wait(60);
   check('sheet abriu', $('sheet-backdrop').classList.contains('show'));
   const corpoSheet = $('sheet-body').textContent;
@@ -73,8 +57,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('link do whatsapp inclui contagem de erros recentes', /Erros recentes \(\d+\)/.test(href));
   check('e um link wa.me que abre o compositor, pessoa revisa antes de enviar', href.indexOf('https://wa.me/') === 0);
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

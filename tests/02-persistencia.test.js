@@ -1,35 +1,17 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  w.URL.createObjectURL = () => 'blob:teste';
-  w.URL.revokeObjectURL = () => {};
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
-
-function touch(w, el, x, y){
-  return new w.TouchEvent ? null : null;
-}
+const { boot, usar, fechar, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
+  // este arquivo alterna entre tres janelas (algumas com sessao/timer ativos),
+  // entao gerencia o ciclo de vida na mao: manterAnterior:true em todo boot,
+  // fechar() quando uma janela nao vai mais ser usada, usar() pra trocar de
+  // volta pra uma janela mais antiga antes de interagir com ela de novo.
+  const w = await boot(null, w => {
+    w.URL.createObjectURL = () => 'blob:teste';
+    w.URL.revokeObjectURL = () => {};
+  }, {manterAnterior: true});
+  const $ = seletor(w);
   const ev = (el, type) => el.dispatchEvent(new w.Event(type, {bubbles:true}));
-  await wait(120);
 
   console.log('\n== autosave e retomada ==');
   $('daylist').querySelector('[data-open="upperA"]').click();
@@ -47,9 +29,8 @@ function touch(w, el, x, y){
   for(const k of Object.keys(w.localStorage)) dump[k] = w.localStorage.getItem(k);
   check('sessao ativa gravada', !!dump['mt_active_session']);
 
-  const w2 = boot(dump);
-  const $2 = id => w2.document.getElementById(id);
-  await wait(150);
+  const w2 = await boot(dump, null, {manterAnterior: true});
+  const $2 = seletor(w2);
   check('banner de retomar aparece', $2('resume').classList.contains('show'));
   check('banner cita Upper A', $2('resume-title').textContent.includes('Upper A'));
   $2('resume-go').click();
@@ -58,6 +39,9 @@ function touch(w, el, x, y){
   check('carga restaurada', $2('card-' + uid).querySelectorAll('input')[0].value === '70');
   check('volume restaurado', $2('sess-volume').textContent === '560 kg');
   check('serie continua marcada', $2('card-' + uid).querySelector('[data-check]').classList.contains('done'));
+
+  fechar(w2); // resumeSession ligou um novo durationInt em w2, encerra antes de voltar pra w
+  usar(w);
 
   console.log('\n== arrastar para excluir ==');
   const alvo = $('exlist').querySelectorAll('.excard[data-uid]')[2];
@@ -111,8 +95,9 @@ function touch(w, el, x, y){
   };
   const OrigBlob = w.Blob;
   w.Blob = function(partes, opts){ conteudoBaixado = partes[0]; return new OrigBlob(partes, opts); };
+  usar(w); // Blob foi trocado depois do pin inicial, repina pra valer no global
   w.MT.favoritos.supino_reto = true;
-  w.eval('exportBackup()');
+  w.MT.exportBackup();
   await wait(20);
   check('arquivo de backup nomeado por data', !!baixou && /^meu-treino-\d{4}-\d{2}-\d{2}\.json$/.test(baixou));
   const payload = JSON.parse(conteudoBaixado);
@@ -121,28 +106,29 @@ function touch(w, el, x, y){
   check('backup inclui o programa', Array.isArray(payload.program) && payload.program.length > 0);
   check('backup inclui overrides e exercicios personalizados', 'overrides' in payload && 'customEx' in payload);
 
+  fechar(w); // sessao de w (upperA) continua com durationInt rodando, encerra antes da proxima janela
+
   console.log('\n== restaurar um backup traz o historico e os favoritos de volta ==');
-  const w3 = boot();
-  const $3 = id => w3.document.getElementById(id);
-  await wait(150);
+  const w3 = await boot(null, null, {manterAnterior: true});
+  const $3 = seletor(w3);
   check('comeca sem favoritos', Object.keys(w3.MT.favoritos).length === 0);
   check('comeca sem historico', w3.MT.history.length === 0);
-  w3.arquivoDeTeste = {text: () => Promise.resolve(JSON.stringify(payload))};
-  w3.eval('importBackup(arquivoDeTeste)');
+  w3.MT.importBackup({text: () => Promise.resolve(JSON.stringify(payload))});
   await wait(30);
   $3('sheet-body').querySelector('[data-r="1"]').click();
   await wait(40);
   check('historico restaurado com a mesma quantidade do backup', w3.MT.history.length === payload.history.length);
   check('favoritos restaurados', w3.MT.favoritos.supino_reto === true);
-  w3.arquivoRuim = {text: () => Promise.resolve(JSON.stringify({app:'outra coisa'}))};
-  w3.eval('importBackup(arquivoRuim)');
+  w3.MT.importBackup({text: () => Promise.resolve(JSON.stringify({app:'outra coisa'}))});
   await wait(30);
   $3('sheet-body').querySelector('[data-r="1"]').click();
   await wait(30);
   check('historico nao foi apagado por um arquivo invalido', w3.MT.history.length === payload.history.length);
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  fechar(w3);
+
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

@@ -1,13 +1,5 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-// instrumentacao anexada na mesma execucao (Store e const, so e visivel dentro
-// do proprio eval que o declara), pra contar quantas vezes Store.set('favoritos')
-// dispara por um unico clique, sem depender de mockar localStorage ou window
-const js = fs.readFileSync(path + 'app.js', 'utf8') +
-  "\nwindow.__contadorFav = 0;\nconst __origStoreSet = Store.set.bind(Store);\n" +
-  "Store.set = function(k, v){ if(k === 'favoritos') window.__contadorFav++; return __origStoreSet(k, v); };\n";
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 const dias = n => new Date(Date.now() - n * 86400000).toISOString();
 const HISTORICO = [
@@ -15,28 +7,17 @@ const HISTORICO = [
     exercises:[{exId:'agachamento_sumo', name:'Agachamento sumô', type:'reps', sets:[{w:'60', r:'8'}]}]}
 ];
 
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  w.caches = {keys: () => Promise.resolve([])};
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
-
 (async () => {
-  const w = boot({mt_history: JSON.stringify(HISTORICO)});
+  const w = await boot({mt_history: JSON.stringify(HISTORICO)});
   const MT = w.MT;
-  const $ = id => w.document.getElementById(id);
-  const ev = (el, type) => el.dispatchEvent(new w.Event(type, {bubbles:true}));
-  await wait(120);
+  const $ = seletor(w);
+
+  // conta quantas vezes Store.set('favoritos') dispara por clique: monkeypatch
+  // do metodo exposto em MT.Store (mesma referencia usada dentro do app),
+  // em vez de concatenar codigo no eval como no boot via jsdom/w.eval antigo
+  let contadorFav = 0;
+  const origStoreSet = MT.Store.set.bind(MT.Store);
+  MT.Store.set = (k, v) => { if(k === 'favoritos') contadorFav++; return origStoreSet(k, v); };
 
   console.log('\n== catalogo: todo exercicio tem metadados, pelo menos 150 ==');
   const exIds = Object.keys(MT.EX);
@@ -122,19 +103,19 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('sem favorito no supino reto ainda', !MT.favoritos['supino_reto']);
   const estrelaSupino = $('ex-options').querySelector('[data-star="supino_reto"]');
   check('estrela do supino reto aparece na lista completa', !!estrelaSupino);
-  w.__contadorFav = 0;
+  contadorFav = 0;
   estrelaSupino.click();
   await wait(20);
-  check('um unico clique dispara Store.set("favoritos") exatamente uma vez, mesmo depois de reabrir 5x', w.__contadorFav === 1);
+  check('um unico clique dispara Store.set("favoritos") exatamente uma vez, mesmo depois de reabrir 5x', contadorFav === 1);
   check('favoritar funciona depois de reabrir o seletor varias vezes', MT.favoritos['supino_reto'] === true);
-  w.__contadorFav = 0;
+  contadorFav = 0;
   $('ex-options').querySelector('[data-star="supino_reto"]').click();
   await wait(20);
-  check('desfavoritar tambem dispara Store.set uma unica vez', w.__contadorFav === 1);
+  check('desfavoritar tambem dispara Store.set uma unica vez', contadorFav === 1);
   check('desfavoritar tambem funciona depois de reabrir varias vezes', !MT.favoritos['supino_reto']);
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

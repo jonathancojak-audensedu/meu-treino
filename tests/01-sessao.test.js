@@ -1,29 +1,10 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
+  const w = await boot();
+  const $ = seletor(w);
   const ev = (el, type) => el.dispatchEvent(new w.Event(type, {bubbles:true}));
-  await wait(120);
 
   console.log('\n== item 3: iniciar e editar exercicios ==');
   $('daylist').querySelector('[data-open="lowerA"]').click();
@@ -107,15 +88,15 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('timer de descanso apareceu', $('resttimer').classList.contains('show'));
   const restStart = parseInt($('ringtext').textContent, 10);
   check('descanso comeca em 150s', restStart >= 148 && restStart <= 150);
-  // simula 100 segundos em segundo plano mexendo no horario de termino
+  // simula 100 segundos em segundo plano mexendo no horario de termino, depois
+  // dispara um foco real (resync esta pendurado em window 'focus')
   w.MT.session.rest.endsAt = Date.now() + 50000; w.MT.session.startedAt = Date.now() - 600000;
-  w.eval('resync()');
+  w.dispatchEvent(new w.Event('focus'));
   await wait(10);
   check('descanso recalculado pelo relogio', parseInt($('ringtext').textContent, 10) === 50);
   check('duracao recalculada pelo relogio', $('sess-timer').textContent === '10:00');
   w.MT.session.rest.endsAt = Date.now() - 10;
-  w.eval('tickRest()');
-  await wait(10);
+  await wait(260); // deixa o setInterval real (250ms) do descanso perceber o fim
   check('descanso encerra sozinho', !$('resttimer').classList.contains('show'));
   check('vibracao disponivel no fim', typeof w.navigator.vibrate === 'function');
 
@@ -212,9 +193,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   console.log('\n== persistencia entre sessoes ==');
   const dump = {};
   for(const k of Object.keys(w.localStorage)) dump[k] = w.localStorage.getItem(k);
-  const w2 = boot(dump);
-  await wait(150);
-  const $2 = id => w2.document.getElementById(id);
+  const w2 = await boot(dump);
+  const $2 = seletor(w2);
   check('2 treinos no historico', $2('hist-sub').textContent.includes('2 treinos'));
   check('montagem personalizada carregou', $2('daylist').textContent.includes('personalizado'));
   $2('daylist').querySelector('[data-open="lowerA"]').click();
@@ -222,8 +202,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('previa abre com a montagem salva', $2('exlist').querySelectorAll('.excard').length === antes + 1);
   check('previa mostra o que foi feito', $2('exlist').textContent.includes('100kg x 6'));
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

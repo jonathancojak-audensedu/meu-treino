@@ -1,27 +1,8 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  w.caches = {keys: () => Promise.resolve([])};
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
+  const w = await boot();
   const MT = w.MT;
   const isCardio = id => MT.EX[id] && MT.EX[id].type === 'cardio';
 
@@ -82,9 +63,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
 
   console.log('\n== sessao real: cardio nao entra no volume em kg ==');
   const progReal = MT.gerar({experiencia:'intermediario', dias:3, tempo:60, local:'casa', objetivo:'emagrecer', dores:[], prioridade:[], nome:'T'});
-  const w2 = boot({mt_program: JSON.stringify(progReal)});
-  const $ = id => w2.document.getElementById(id);
-  await wait(120);
+  const w2 = await boot({mt_program: JSON.stringify(progReal)});
+  const $ = seletor(w2);
 
   $('daylist').querySelector('[data-open="d1"]').click();
   await wait(20);
@@ -97,7 +77,7 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   const inputW = cardioCard.querySelector('input[data-f="w"]');
   check('cardio nao tem campo de carga preenchido por padrao', inputW.value === '');
   inputR.value = '20';
-  inputR.dispatchEvent(new w2.window.Event('input', {bubbles:true}));
+  inputR.dispatchEvent(new w2.Event('input', {bubbles:true}));
   await wait(20);
 
   const checkBtn = cardioCard.querySelector('[data-check="' + cardioUid + '|0"]');
@@ -114,8 +94,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('cardioMin registra os 20 minutos', entry.cardioMin === 20);
   check('historico mostra o tile de cardio separado do volume', $('histlist').textContent.includes('20 min') && $('histlist').textContent.includes('Cardio'));
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

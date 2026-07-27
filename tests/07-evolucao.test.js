@@ -1,8 +1,5 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 const dias = n => new Date(Date.now() - n * 86400000).toISOString();
 
@@ -18,25 +15,9 @@ const HISTORICO = [
     ]}
 ];
 
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
-
 (async () => {
-  const w = boot({mt_history: JSON.stringify(HISTORICO)});
-  const $ = id => w.document.getElementById(id);
-  await wait(120);
+  const w = await boot({mt_history: JSON.stringify(HISTORICO)});
+  const $ = seletor(w);
 
   console.log('\n== dados puros (MT.exerciciosComHistorico / MT.serieTemporal) ==');
   const exs = w.MT.exerciciosComHistorico();
@@ -87,8 +68,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('lista volta a aparecer', $('histlist').style.display !== 'none');
   check('evolucao esconde de novo', $('evolist').style.display === 'none');
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

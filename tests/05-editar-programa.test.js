@@ -1,27 +1,9 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
+  const w = await boot();
+  const $ = seletor(w);
   const cards = () => [...$('exlist').querySelectorAll('.excard[data-uid]')];
   const nomes = () => cards().map(c => c.querySelector('.exname').textContent);
   const uidAt = pos => cards()[pos].dataset.uid;
@@ -31,7 +13,6 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
     $('btn-editprog').click();
     await wait(20);
   };
-  await wait(120);
 
   console.log('\n== abrir previa e entrar em edicao ==');
   $('daylist').querySelector('[data-open="lowerA"]').click();
@@ -120,8 +101,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('restou exatamente 1 exercicio', cards().length === 1);
   check('botao excluir some quando so resta 1', !$('exlist').querySelector('[data-remove]'));
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

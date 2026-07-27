@@ -1,28 +1,9 @@
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
-
-function boot(){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const { boot, wait, criarCheck, seletor } = require('./_helpers');
+const check = criarCheck();
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
-  const ev = (el, type) => el.dispatchEvent(new w.Event(type, {bubbles:true}));
-  await wait(120);
+  const w = await boot();
+  const $ = seletor(w);
 
   console.log('\n== elementos do timer redesenhado existem ==');
   check('barra de progresso existe', !!$('restbarfill'));
@@ -68,13 +49,13 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('+15s devolve o horario original', w.MT.session.rest.endsAt === antes);
 
   console.log('\n== destaque nos ultimos 10 segundos (nao mais 5) ==');
+  // deixa o setInterval real (a cada 250ms) recalcular, em vez de chamar
+  // tickRest direto: a funcao e interna do modulo de sessao, nao exposta
   w.MT.session.rest.endsAt = Date.now() + 10000;
-  w.eval('tickRest()');
-  await wait(10);
+  await wait(260);
   check('10s restantes ja ativa o destaque', $('resttimer').classList.contains('ending'));
   w.MT.session.rest.endsAt = Date.now() + 30000;
-  w.eval('tickRest()');
-  await wait(10);
+  await wait(260);
   check('30s restantes nao ativa o destaque', !$('resttimer').classList.contains('ending'));
 
   console.log('\n== marcar a ultima serie avisa que acabou ==');
@@ -94,8 +75,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('pular esconde o timer', !$('resttimer').classList.contains('show'));
   check('pular tambem recolhe a tela cheia', !$('resttimer').classList.contains('expanded'));
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 20000);

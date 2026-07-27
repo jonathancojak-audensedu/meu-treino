@@ -1,30 +1,20 @@
-const { JSDOM } = require('jsdom');
 const fs = require('fs');
-const path = require('path').join(__dirname, '..') + '/';
-const html = fs.readFileSync(path + 'index.html', 'utf8');
-const js = fs.readFileSync(path + 'app.js', 'utf8');
+const path = require('path');
+const { boot, wait, criarCheck, seletor, REPO } = require('./_helpers');
+const check = criarCheck();
 
-function boot(storage){
-  const dom = new JSDOM(html, { runScripts: 'outside-only', url: 'https://exemplo.github.io/treino/', pretendToBeVisual: true });
-  const w = dom.window;
-  w.HTMLElement.prototype.scrollIntoView = function(){};
-  w.scrollTo = function(){};
-  w.navigator.vibrate = () => true;
-  w.Audio = function(){ return {loop:false, volume:1, play:()=>Promise.resolve(), pause:()=>{}}; };
-  if(storage) for(const k of Object.keys(storage)) w.localStorage.setItem(k, storage[k]);
-  w.eval(js);
-  return w;
-}
-const wait = ms => new Promise(r => setTimeout(r, ms));
-let fails = 0;
-const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   ' : '  FALHA') + '  ' + label); };
+const html = fs.readFileSync(REPO + 'index.html', 'utf8');
+const jsDir = path.join(REPO, 'js');
+const todoJs = fs.readdirSync(jsDir)
+  .filter(f => f.endsWith('.js'))
+  .map(f => fs.readFileSync(path.join(jsDir, f), 'utf8'))
+  .join('\n');
 
 (async () => {
-  const w = boot();
-  const $ = id => w.document.getElementById(id);
+  const w = await boot();
+  const $ = seletor(w);
   const ev = (el, type) => el.dispatchEvent(new w.Event(type, {bubbles:true}));
   const opt = v => $('onb-body').querySelector('[data-opt="' + v + '"]');
-  await wait(150);
 
   console.log('\n== primeira abertura ==');
   check('onboarding abre sozinho', $('onboarding').hidden === false);
@@ -125,15 +115,14 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
 
   console.log('\n== nada de nome pessoal sobrando ==');
   check('sem Jonathan Costa no html', !html.includes('Jonathan Costa'));
-  check('sem referencia a laudo no js', !js.includes('laudo'));
+  check('sem referencia a laudo no js', !todoJs.includes('laudo'));
   check('titulo generico', $('screen-home').querySelector('h1').textContent === 'Meu Treino');
 
   console.log('\n== segunda abertura nao repete o onboarding ==');
   const dump = {};
   for(const k of Object.keys(w.localStorage)) dump[k] = w.localStorage.getItem(k);
-  const w2 = boot(dump);
-  const $2 = id => w2.document.getElementById(id);
-  await wait(150);
+  const w2 = await boot(dump);
+  const $2 = seletor(w2);
   check('onboarding nao reaparece', $2('onboarding').hidden === true);
   check('home ja personalizada', /Jonathan/.test($2('home-sub').textContent));
 
@@ -143,8 +132,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('reabre o onboarding', $2('onboarding').hidden === false);
   check('vem preenchido com o nome', $2('onb-texto').value === 'Jonathan');
   $2('onb-texto').value = 'Jon';
-  w2.document.getElementById('onb-texto').dispatchEvent(new w2.Event('input', {bubbles:true}));
-  for(let i = 0; i < 8; i++){ $2("onb-next").click(); await wait(40); }
+  $2('onb-texto').dispatchEvent(new w2.Event('input', {bubbles:true}));
+  for(let i = 0; i < 8; i++){ $2('onb-next').click(); await wait(40); }
   check('chegou no resumo em modo edicao', $2('onb-body').textContent.includes('Tudo certo, Jon'));
   check('botao diz salvar', $2('onb-next').textContent.includes('Salvar'));
   $2('onb-next').click();
@@ -197,8 +186,8 @@ const check = (label, cond) => { if(!cond) fails++; console.log((cond ? '  ok   
   check('volume calcula', $2('sess-volume').textContent === '640 kg');
   check('timer de descanso abre', $2('resttimer').classList.contains('show'));
 
-  console.log('\n' + (fails ? fails + ' FALHAS' : 'todas as verificacoes passaram'));
-  process.exit(fails ? 1 : 0);
+  console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
+  process.exit(check.fails ? 1 : 0);
 })();
 
 setTimeout(() => { console.log('\n(timeout)'); process.exit(1); }, 25000);
