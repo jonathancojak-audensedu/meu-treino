@@ -3,7 +3,7 @@
    js/ ou css/, ou o manifest. Se um arquivo novo entrar em js/ ou css/ e
    ficar de fora do SHELL, o service worker nao instala e o offline quebra.
    Caminhos relativos para funcionar em subpasta do GitHub Pages. */
-const VERSION = 'meu-treino-v26';
+const VERSION = 'meu-treino-v27';
 
 const SHELL = [
   './',

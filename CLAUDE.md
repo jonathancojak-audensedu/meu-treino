@@ -23,7 +23,7 @@ O app é carregado como módulos ES nativos (`<script type="module" src="./js/ma
 
 ## Regras obrigatórias
 
-1. **Sempre suba a `VERSION` no `sw.js`** ao alterar `index.html`, qualquer arquivo em `js/` ou `css/`. Sem isso o service worker serve a versão antiga do cache e parece que a alteração não subiu. É o erro mais comum deste projeto. Essa `VERSION` e a `version` do `package.json` têm propósitos independentes: uma invalida o cache do navegador, a outra versiona o pacote. Não tente mantê-las iguais. Se criar um arquivo novo em `js/` ou `css/`, adicione o caminho na lista `SHELL` do `sw.js`, senão ele nunca entra no cache offline.
+1. **Sempre suba a `VERSION` no `sw.js`** ao alterar `index.html`, qualquer arquivo em `js/` ou `css/`. Sem isso o service worker serve a versão antiga do cache e parece que a alteração não subiu. É o erro mais comum deste projeto. Essa `VERSION` e a `version` do `package.json` têm propósitos independentes: uma invalida o cache do navegador, a outra versiona o pacote. Não tente mantê-las iguais. Se criar um arquivo novo em `js/` ou `css/`, adicione o caminho na lista `SHELL` do `sw.js`, senão ele nunca entra no cache offline. Se a mudança for visível pra pessoa que usa o app, adicione também uma entrada em `NOVIDADES` (`js/main.js`), que alimenta a tela Sobre.
 2. **Rode os testes antes de commitar:** `node tests/run-all.js`. Se algum falhar, corrija antes de subir.
 3. **Nunca use `localStorage` ou `sessionStorage` como armazenamento principal.** O padrão é IndexedDB através do objeto `Store` (`js/store.js`), com localStorage só como rede de segurança.
 4. **Todo texto visível é em português do Brasil**, com acentuação correta.

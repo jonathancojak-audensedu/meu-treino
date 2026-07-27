@@ -393,6 +393,40 @@ async function obterUsoArmazenamento(){
   return 'não disponível neste navegador';
 }
 
+/* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
+   algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
+const NOVIDADES = [
+  {versao: 'meu-treino-v27', itens: [
+    'Tela Sobre, com a versão do app e as novidades da atualização',
+    'Lembrete pra fazer backup a cada 15 treinos ou 30 dias',
+    'Aviso pra quem usa no iPhone sem instalar na tela de início'
+  ]}
+];
+
+async function abrirSobre(){
+  const el = $('sheet-backdrop');
+  const versao = await obterVersaoApp();
+  const recentes = NOVIDADES[0];
+  $('sheet-body').innerHTML =
+    '<div class="sheethead"><h2 id="sheet-title">Sobre o Meu Treino</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    '<div class="onb-resumo"><div class="onb-linha"><span>Versão</span><span>' + esc(versao) + '</span></div></div>' +
+    (recentes ? '<div class="sumsection">Novidades desta versão</div><ul class="novidades">' +
+      recentes.itens.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>' : '') +
+    '<div class="aviso">Este app não substitui avaliação de um profissional de educação física ou de saúde. ' +
+    'Se você tem dor, lesão ou condição clínica, procure orientação antes de treinar.</div>' +
+    '<div class="sheetact" style="margin-top:16px">' +
+      '<button class="btn-ghost" id="sobre-feedback">Enviar feedback</button>' +
+      '<button class="btn-primary" data-fechar="1">Fechar</button>' +
+    '</div>';
+  openBackdrop(el, null, true);
+  $('sheet-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => fecharSheetAtual());
+  $('sobre-feedback').onclick = () => {
+    const link = $('btn-feedback');
+    if(link && link.href) window.open(link.href, '_blank');
+  };
+}
+
 async function abrirDiagnostico(){
   const el = $('sheet-backdrop');
   const versao = await obterVersaoApp();
@@ -580,6 +614,7 @@ $('btn-import').onclick = () => $('file-import').click();
 $('file-import').onchange = e => { const f = e.target.files[0]; if(f) importBackup(f); e.target.value = ''; };
 $('btn-wipe').onclick = wipeAll;
 $('btn-resetprog').onclick = refazerPrograma;
+$('btn-sobre').onclick = abrirSobre;
 $('btn-diagnostico').onclick = abrirDiagnostico;
 
 function bindSwitch(id, key, onChange){
