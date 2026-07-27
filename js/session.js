@@ -476,13 +476,13 @@ function cardHTML(item, pos){
       '<div class="setrow' + (entry.done ? ' done' : '') + '">' +
         '<div class="setnum">' + (s+1) + '</div>' +
         '<div class="field">' +
-          '<input type="number" inputmode="decimal" step="0.5" min="0" pattern="[0-9]*" value="' + esc(entry.w) + '" ' +
+          '<input type="number" inputmode="decimal" step="0.5" min="0" pattern="[0-9]*" class="' + (entry.autoW ? 'auto' : '') + '" value="' + esc(entry.w) + '" ' +
             'placeholder="' + (def.type === 'reps' ? 'kg' : def.type === 'cardio' ? 'km opc.' : 'kg opc.') + '" ' +
             'aria-label="' + (def.type === 'cardio' ? 'Distância' : 'Carga') + ' da série ' + (s+1) + ' de ' + esc(def.name) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="w">' +
           '<div class="prevhint">' + hint + '</div>' +
         '</div>' +
         '<div class="field">' +
-          '<input type="number" inputmode="numeric" step="1" min="0" pattern="[0-9]*" value="' + esc(entry.r) + '" ' +
+          '<input type="number" inputmode="numeric" step="1" min="0" pattern="[0-9]*" class="' + (entry.autoR ? 'auto' : '') + '" value="' + esc(entry.r) + '" ' +
             'placeholder="' + esc(def.type === 'reps' ? item.reps : (def.type === 'time' ? 'seg' : def.type === 'cardio' ? 'min' : 'metros')) + '" ' +
             'aria-label="' + (u === 'reps' ? 'Repetições' : u === 's' ? 'Segundos' : u === 'min' ? 'Minutos' : 'Metros') + ' da série ' + (s+1) + '" data-uid="' + item.uid + '" data-s="' + s + '" data-f="r">' +
           '<div class="prevhint">' + (def.type === 'reps' ? 'alvo ' + esc(item.reps) : '') + '</div>' +
@@ -764,12 +764,41 @@ function onInput(e){
     return;
   }
   if(!el.dataset || el.dataset.f === undefined || !session) return;
-  const uid = el.dataset.uid, s = +el.dataset.s;
+  const uid = el.dataset.uid, s = +el.dataset.s, f = el.dataset.f;
   if(!session.log[uid]) session.log[uid] = [];
   if(!session.log[uid][s]) session.log[uid][s] = {w:'', r:'', done:false};
-  session.log[uid][s][el.dataset.f] = el.value;
+  const entry = session.log[uid][s];
+  entry[f] = el.value;
+  entry[chaveAuto(f)] = false;
+  el.classList.remove('auto');
+  propagarValor(uid, s, f, el.value);
   updateStats();
   saveSession();
+}
+
+const chaveAuto = f => f === 'w' ? 'autoW' : 'autoR';
+
+/* propaga carga/reps digitadas pras series seguintes do mesmo exercicio,
+   so pra frente e so nas que ainda nao foram concluidas nem editadas a mao.
+   nao reusa refreshCard aqui pra nao perder o foco/cursor de quem esta
+   digitando no campo que disparou a propagacao */
+function propagarValor(uid, fromS, f, valor){
+  const item = itemByUid(uid);
+  if(!item) return;
+  const log = session.log[uid];
+  const chave = chaveAuto(f);
+  const card = $('card-' + uid);
+  for(let s = fromS + 1; s < item.sets; s++){
+    if(!log[s]) log[s] = {w:'', r:'', done:false};
+    const entry = log[s];
+    if(entry.done || entry[chave] === false) continue;
+    entry[f] = valor;
+    entry[chave] = true;
+    if(card){
+      const input = card.querySelector('input[data-s="' + s + '"][data-f="' + f + '"]');
+      if(input){ input.value = valor; input.classList.add('auto'); }
+    }
+  }
 }
 
 /* campos numéricos não aceitam letras (o 'e' passa em input type=number) */
@@ -794,12 +823,14 @@ function stepReps(uid, s, delta){
   }else{
     entry.r = String(Math.max(0, current + delta));
   }
+  entry.autoR = false;
   const card = $('card-' + uid);
   const rows = card ? card.querySelectorAll('.setrow') : [];
   if(rows[s]){
     const target = rows[s].querySelector('input[data-f="r"]');
-    if(target) target.value = entry.r;
+    if(target){ target.value = entry.r; target.classList.remove('auto'); }
   }
+  propagarValor(uid, s, 'r', entry.r);
   updateStats();
   saveSession();
 }
@@ -810,13 +841,6 @@ function toggleSet(uid, s){
   if(!session.log[uid][s]) session.log[uid][s] = {w:'', r:'', done:false};
   const entry = session.log[uid][s];
   entry.done = !entry.done;
-
-  if(entry.done){
-    const prev = lastPerformance(item.ex);
-    if(!entry.w && s > 0 && session.log[uid][s-1] && session.log[uid][s-1].w) entry.w = session.log[uid][s-1].w;
-    else if(!entry.w && prev && prev.sets[s] && prev.sets[s].w) entry.w = prev.sets[s].w;
-    if(!entry.r && s > 0 && session.log[uid][s-1] && session.log[uid][s-1].r) entry.r = session.log[uid][s-1].r;
-  }
 
   const doneCount = session.log[uid].slice(0, item.sets).filter(x => x.done).length;
   refreshCard(uid);

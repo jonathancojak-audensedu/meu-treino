@@ -116,6 +116,7 @@
   .setrow input{width:100%; background:var(--bg-elev); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:16px; padding:11px 4px; text-align:center;}
   .setrow input::placeholder{color:var(--text-faint); font-size:14px;}
   .setrow input:focus{outline:none; border-color:var(--accent);}
+  .setrow input.auto{color:var(--text-dim);}
   .setrow .prevhint{font-size:11px; color:var(--text-faint); text-align:center; margin-top:3px; font-family:var(--mono); min-height:14px;}
   .stepper{display:flex; flex-direction:column; gap:3px;}
   .stepper button{width:36px; height:21px; border-radius:7px; border:1px solid var(--line-strong); background:var(--card-2); color:var(--text-dim); font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;}
