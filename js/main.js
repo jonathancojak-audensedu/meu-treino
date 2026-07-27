@@ -6,6 +6,7 @@
 
 import { EX, META, EQUIP } from './catalog.js';
 import { gerarPrograma, tempoEstimado, volumeSemanal, PARAMS, MODELOS, SPLITS, SPLITS_CORPO } from './generator.js';
+import { Store, dbBroken, SCHEMA_VERSION, MIGRACOES, migrarDados, lerDadosBrutos, construirPayloadBackup, baixarJSON, lerArquivoBackup } from './store.js';
 
 /* Número que recebe o feedback pelo WhatsApp (wa.me), só dígitos com DDI e DDD. */
 const FEEDBACK_NUMERO = '5581986501624';
@@ -81,117 +82,11 @@ let PROGRAM = [
 const byKey = k => PROGRAM.find(w => w.key === k);
 
 /* -------------------------------------------------------------------------
-   3. ARMAZENAMENTO
+   ARMAZENAMENTO em js/store.js: Store (IndexedDB com localStorage de
+   reserva), versionamento (SCHEMA_VERSION, MIGRACOES, migrarDados) e o
+   formato de payload do backup (construirPayloadBackup, lerArquivoBackup).
    ------------------------------------------------------------------------- */
-const DB_NAME = 'meutreino', STORE = 'kv';
-let dbPromise = null, dbBroken = false;
 
-function openDB(){
-  if(dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
-    if(!('indexedDB' in window)) return reject(new Error('sem indexedDB'));
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  }).catch(err => { dbBroken = true; throw err; });
-  return dbPromise;
-}
-
-const Store = {
-  async get(key){
-    try{
-      if(dbBroken) throw new Error('fallback');
-      const db = await openDB();
-      return await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const r = tx.objectStore(STORE).get(key);
-        r.onsuccess = () => resolve(r.result);
-        r.onerror = () => reject(r.error);
-      });
-    }catch(e){
-      try{ const raw = localStorage.getItem('mt_' + key); return raw ? JSON.parse(raw) : undefined; }
-      catch(e2){ return undefined; }
-    }
-  },
-  async set(key, value){
-    let ok = false;
-    try{
-      if(dbBroken) throw new Error('fallback');
-      const db = await openDB();
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(value, key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-      ok = true;
-    }catch(e){ /* cai para o localStorage */ }
-    try{ localStorage.setItem('mt_' + key, JSON.stringify(value)); ok = true; }catch(e2){ /* cota cheia */ }
-    return ok;
-  },
-  async del(key){
-    try{
-      if(!dbBroken){
-        const db = await openDB();
-        await new Promise(resolve => {
-          const tx = db.transaction(STORE, 'readwrite');
-          tx.objectStore(STORE).delete(key);
-          tx.oncomplete = resolve; tx.onerror = resolve;
-        });
-      }
-    }catch(e){ /* ignora */ }
-    try{ localStorage.removeItem('mt_' + key); }catch(e2){ /* ignora */ }
-  }
-};
-
-/* -------------------------------------------------------------------------
-   3b. VERSIONAMENTO DOS DADOS
-   schemaVersion fica gravado no Store. Cada salto de versao tem uma funcao
-   em MIGRACOES que recebe o objeto com todas as chaves de dados e devolve
-   o objeto migrado. Se uma migracao falhar, os dados originais nao sao
-   tocados: uma copia bruta vai para a chave de resgate antes de qualquer
-   escrita, e a pessoa e avisada que existe uma copia recuperavel.
-   ------------------------------------------------------------------------- */
-const SCHEMA_VERSION = 1;
-const CHAVES_DADOS = ['history', 'profile', 'corpo', 'overrides', 'custom_ex', 'program', 'favoritos', 'settings'];
-
-const MIGRACOES = {
-  // de "sem versao" (quem instalou antes deste recurso existir) para 1:
-  // so passa a registrar a versao, o formato dos dados em si nao muda
-  1: async dados => dados
-};
-
-async function lerDadosBrutos(){
-  const entradas = await Promise.all(CHAVES_DADOS.map(k => Store.get(k)));
-  const dados = {};
-  CHAVES_DADOS.forEach((k, i) => { dados[k] = entradas[i]; });
-  return dados;
-}
-
-async function migrarDados(alvoVersao){
-  alvoVersao = alvoVersao || SCHEMA_VERSION;
-  let versaoAtual = await Store.get('schemaVersion');
-  if(typeof versaoAtual !== 'number') versaoAtual = 0;
-  if(versaoAtual >= alvoVersao) return {ok: true, versao: versaoAtual};
-
-  const bruto = await lerDadosBrutos();
-  await Store.set('resgate_dados', {versaoOrigem: versaoAtual, quando: new Date().toISOString(), dados: bruto});
-
-  try{
-    let dados = bruto;
-    for(let v = versaoAtual + 1; v <= alvoVersao; v++){
-      const passo = MIGRACOES[v];
-      if(passo) dados = await passo(dados);
-    }
-    await Promise.all(CHAVES_DADOS.map(k => dados[k] !== undefined ? Store.set(k, dados[k]) : Promise.resolve()));
-    await Store.set('schemaVersion', alvoVersao);
-    await Store.del('resgate_dados');
-    return {ok: true, versao: alvoVersao};
-  }catch(e){
-    return {ok: false, erro: e, versaoOrigem: versaoAtual};
-  }
-}
 
 /* -------------------------------------------------------------------------
    4. ESTADO
@@ -1757,24 +1652,20 @@ function toast(msg, actionLabel, cb){
    19. BACKUP
    ------------------------------------------------------------------------- */
 function exportBackup(){
-  const payload = {app:'meu-treino', version:3, exportedAt:new Date().toISOString(), history:history, overrides:overrides, customEx:customEx, profile:profile, corpo:corpo, program:PROGRAM, favoritos:favoritos};
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'meu-treino-' + new Date().toISOString().slice(0, 10) + '.json';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  const payload = construirPayloadBackup({history, overrides, customEx, profile, corpo, program: PROGRAM, favoritos});
+  baixarJSON(payload, 'meu-treino-' + new Date().toISOString().slice(0, 10) + '.json');
   toast('Backup gerado');
 }
 
 async function importBackup(file){
-  let data;
-  try{ data = JSON.parse(await file.text()); }
-  catch(e){ return askConfirm({title:'Arquivo inválido', text:'Não consegui ler esse arquivo. Use um backup exportado pelo próprio app.', confirmLabel:'Entendi', hideCancel:true}); }
-  if(!data || !Array.isArray(data.history)){
-    return askConfirm({title:'Arquivo inválido', text:'Esse JSON não tem um histórico de treinos dentro.', confirmLabel:'Entendi', hideCancel:true});
+  const lido = await lerArquivoBackup(file);
+  if(!lido.ok){
+    const msg = lido.motivo === 'invalido'
+      ? {title:'Arquivo inválido', text:'Não consegui ler esse arquivo. Use um backup exportado pelo próprio app.', confirmLabel:'Entendi', hideCancel:true}
+      : {title:'Arquivo inválido', text:'Esse JSON não tem um histórico de treinos dentro.', confirmLabel:'Entendi', hideCancel:true};
+    return askConfirm(msg);
   }
+  const data = lido.data;
   const ok = await askConfirm({
     title: 'Restaurar ' + data.history.length + ' treinos?',
     text: 'O histórico atual (' + history.length + ') será substituído pelo do arquivo.',
