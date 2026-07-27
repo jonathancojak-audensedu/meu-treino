@@ -72,7 +72,7 @@ const Store = {
    escrita, e a pessoa e avisada que existe uma copia recuperavel.
    ------------------------------------------------------------------------- */
 const SCHEMA_VERSION = 1;
-const CHAVES_DADOS = ['history', 'profile', 'corpo', 'overrides', 'custom_ex', 'program', 'favoritos', 'settings'];
+const CHAVES_DADOS = ['history', 'profile', 'corpo', 'overrides', 'custom_ex', 'program', 'favoritos', 'settings', 'avatar'];
 
 const MIGRACOES = {
   // de "sem versao" (quem instalou antes deste recurso existir) para 1:
@@ -119,9 +119,10 @@ async function migrarDados(alvoVersao){
    ------------------------------------------------------------------------- */
 function construirPayloadBackup(estado){
   return {
-    app: 'meu-treino', version: 3, exportedAt: new Date().toISOString(),
+    app: 'meu-treino', version: 4, exportedAt: new Date().toISOString(),
     history: estado.history, overrides: estado.overrides, customEx: estado.customEx,
-    profile: estado.profile, corpo: estado.corpo, program: estado.program, favoritos: estado.favoritos
+    profile: estado.profile, corpo: estado.corpo, program: estado.program, favoritos: estado.favoritos,
+    avatar: estado.avatar
   };
 }
 

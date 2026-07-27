@@ -117,6 +117,8 @@ function setPROGRAM(novo){ PROGRAM = Array.isArray(novo) ? novo : PROGRAM; }
 let settings = {sound:true, wake:true};
 let erros = [];
 let deferredInstall = null;
+let avatar = null;
+function setAvatar(novo){ avatar = typeof novo === 'string' ? novo : null; }
 
 function daysAgo(iso){
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
@@ -214,10 +216,50 @@ function atualizarCabecalhoHome(){
 }
 
 /* -------------------------------------------------------------------------
+   18.1 FOTO DE PERFIL
+   Fica só no aparelho, em base64 (JPEG 256x256). Nunca sai daqui a não ser
+   dentro de um backup exportado pela própria pessoa.
+   ------------------------------------------------------------------------- */
+function renderAvatar(){
+  const inicial = profile && profile.nome ? esc(profile.nome[0].toUpperCase()) : '';
+  [$('home-avatar'), $('set-avatar-preview')].forEach(el => {
+    if(!el) return;
+    el.style.backgroundImage = avatar ? 'url(' + avatar + ')' : '';
+    el.textContent = avatar ? '' : inicial;
+  });
+  $('btn-avatar-remover').style.display = avatar ? 'inline-flex' : 'none';
+}
+
+async function escolherAvatarArquivo(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){ toast('Escolha um arquivo de imagem'); return; }
+  try{
+    const bitmap = await createImageBitmap(file);
+    const lado = Math.min(bitmap.width, bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, (bitmap.width - lado) / 2, (bitmap.height - lado) / 2, lado, lado, 0, 0, 256, 256);
+    setAvatar(canvas.toDataURL('image/jpeg', 0.8));
+    await Store.set('avatar', avatar);
+    renderAvatar();
+    toast('Foto atualizada');
+  }catch(e){
+    toast('Não consegui usar essa imagem');
+  }
+}
+
+async function removerAvatar(){
+  setAvatar(null);
+  await Store.del('avatar');
+  renderAvatar();
+  toast('Foto removida');
+}
+
+/* -------------------------------------------------------------------------
    19. BACKUP
    ------------------------------------------------------------------------- */
 function exportBackup(){
-  const payload = construirPayloadBackup({history, overrides, customEx, profile, corpo, program: PROGRAM, favoritos});
+  const payload = construirPayloadBackup({history, overrides, customEx, profile, corpo, program: PROGRAM, favoritos, avatar});
   baixarJSON(payload, 'meu-treino-' + new Date().toISOString().slice(0, 10) + '.json');
   toast('Backup gerado');
 }
@@ -244,8 +286,9 @@ async function importBackup(file){
   if(Array.isArray(data.program) && data.program.length){ PROGRAM = data.program; await Store.set('program', PROGRAM); }
   if(data.corpo){ setCorpo(data.corpo); await Store.set('corpo', corpo); atualizarAjustes(); }
   if(data.favoritos){ setFavoritos(data.favoritos); await Store.set('favoritos', favoritos); }
+  if(typeof data.avatar === 'string'){ setAvatar(data.avatar); await Store.set('avatar', avatar); }
   await saveHistory();
-  renderHistory(); renderHome();
+  renderHistory(); renderHome(); renderAvatar();
   toast('Backup restaurado');
 }
 
@@ -473,6 +516,10 @@ $('nav-history').onclick = () => { renderHistory(); showHistoryTab(historyTab); 
 $('tab-lista').onclick = () => showHistoryTab('lista');
 $('tab-evolucao').onclick = () => showHistoryTab('evolucao');
 $('nav-settings').onclick = () => { prepararFeedback(); showScreen('settings'); };
+$('home-avatar').onclick = () => { prepararFeedback(); showScreen('settings'); };
+$('btn-avatar-escolher').onclick = () => $('avatar-file').click();
+$('avatar-file').onchange = e => { const f = e.target.files[0]; if(f) escolherAvatarArquivo(f); e.target.value = ''; };
+$('btn-avatar-remover').onclick = removerAvatar;
 
 $('btn-calendar').onclick = openCalendar;
 $('cal-close').onclick = () => fecharSheetAtual();
@@ -537,10 +584,10 @@ $('btn-install').onclick = async () => {
 async function boot(){
   const migracao = await migrarDados();
 
-  const [h, s, active, ov, cx, pf, cp, pg, fv, er] = await Promise.all([
+  const [h, s, active, ov, cx, pf, cp, pg, fv, er, av] = await Promise.all([
     Store.get('history'), Store.get('settings'), Store.get('active_session'),
     Store.get('overrides'), Store.get('custom_ex'), Store.get('profile'), Store.get('corpo'),
-    Store.get('program'), Store.get('favoritos'), Store.get('erros_recentes')
+    Store.get('program'), Store.get('favoritos'), Store.get('erros_recentes'), Store.get('avatar')
   ]);
   if(Array.isArray(pg) && pg.length) PROGRAM = pg;
   setProfile((pf && typeof pf === 'object') ? pf : null);
@@ -551,6 +598,7 @@ async function boot(){
   if(cx && typeof cx === 'object') setCustomEx(cx);
   if(fv && typeof fv === 'object') setFavoritos(fv);
   if(Array.isArray(er)) erros = er;
+  setAvatar(av);
   $('sw-sound').setAttribute('aria-checked', settings.sound ? 'true' : 'false');
   $('sw-wake').setAttribute('aria-checked', settings.wake ? 'true' : 'false');
 
@@ -563,6 +611,7 @@ async function boot(){
 
   renderHome();
   renderHistory();
+  renderAvatar();
   updateStorageLabel();
   atualizarAjustes();
   prepararFeedback();
@@ -640,6 +689,7 @@ window.MT = {
   get profile(){ return profile; },
   get program(){ return PROGRAM; },
   get favoritos(){ return favoritos; },
+  get avatar(){ return avatar; },
   EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
   gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
   exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
@@ -650,6 +700,7 @@ window.MT = {
   registrarErro: registrarErro, formatarBytes: formatarBytes, obterUsoArmazenamento: obterUsoArmazenamento,
   Store: Store,
   exportBackup: exportBackup, importBackup: importBackup,
+  escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   _pararTimers: pararTimers
 };
 

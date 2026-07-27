@@ -4,7 +4,8 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 
 ## Arquivos
 
-- `index.html` — markup e todo o CSS
+- `index.html` — markup
+- `css/app.css` — todo o CSS
 - `js/main.js` — ponto de entrada: boot(), tela inicial, backup, diagnóstico de erros, ligação de todos os eventos, `window.MT`
 - `js/catalog.js` — catálogo de exercícios (`EX`, `META`, `EQUIP`)
 - `js/generator.js` — `gerarPrograma` e auxiliares, função pura
@@ -70,7 +71,7 @@ O teste do gerador verifica nove propriedades por programa: equipamento disponí
 
 - Não crie backend, login ou banco de dados sem que isso seja pedido explicitamente. O app é offline-first por decisão de projeto.
 - Não coloque chave de API no código. O site é estático e público, qualquer chave fica visível.
-- Não mude os nomes das chaves do `Store` (`history`, `profile`, `program`, `overrides`, `custom_ex`, `corpo`, `settings`, `active_session`, `favoritos`, `schemaVersion`, `resgate_dados`, `erros_recentes`) sem escrever a migração, senão o usuário perde os dados.
+- Não mude os nomes das chaves do `Store` (`history`, `profile`, `program`, `overrides`, `custom_ex`, `corpo`, `settings`, `active_session`, `favoritos`, `avatar`, `schemaVersion`, `resgate_dados`, `erros_recentes`) sem escrever a migração, senão o usuário perde os dados.
 - Toda mudança no formato de uma chave do `Store` precisa de uma função nova em `MIGRACOES` (`js/store.js`) e subir o `SCHEMA_VERSION`. Ver "Dados têm versão" acima.
 - Não remova o aviso de que o app não substitui avaliação profissional.
 

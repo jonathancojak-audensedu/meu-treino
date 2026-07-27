@@ -27,6 +27,7 @@
         <h1>Meu Treino</h1>
         <div class="sub" id="home-sub"></div>
       </div>
+      <button class="homeavatar" id="home-avatar" type="button" aria-label="Abrir ajustes"></button>
     </div>
     <div class="homestats" id="homestats"></div>
     <div class="resume" id="resume" role="region" aria-label="Treino em andamento">
@@ -122,6 +123,20 @@
       </div>
     </div>
     <div class="setlist">
+      <div class="setitem avatarsetitem" style="cursor:default;">
+        <div class="avatarrow">
+          <div class="avatarpreview" id="set-avatar-preview" aria-hidden="true"></div>
+          <div>
+            <div class="t">Foto de perfil</div>
+            <div class="d">Aparece na home. Fica só no seu aparelho.</div>
+          </div>
+        </div>
+        <div class="avatarbtns">
+          <button class="minibtn" id="btn-avatar-escolher">Escolher foto</button>
+          <button class="minibtn danger" id="btn-avatar-remover" style="display:none;">Remover</button>
+        </div>
+        <input type="file" accept="image/*" id="avatar-file" class="sr-only">
+      </div>
       <div class="setitem" style="cursor:default;">
         <div>
           <div class="t">Som ao fim do descanso</div>
