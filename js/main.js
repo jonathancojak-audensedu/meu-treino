@@ -29,7 +29,8 @@ import {
   toggleRestExpand, addRest, skipRest, releaseWake,
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
-  hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers
+  hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
+  compartilharResumo, getShareFile
 } from './session.js';
 import {
   PERGUNTAS, ROTULOS, profile, setProfile, corpo, setCorpo, onbIdx,
@@ -504,6 +505,7 @@ $('btn-editprog').onclick = () => openEdit(previewKey);
 $('btn-canceledit').onclick = cancelEdit;
 $('btn-saveedit').onclick = saveEdit;
 $('btn-sum-done').onclick = () => { showScreen('home'); renderHome(); };
+$('btn-sum-share').onclick = compartilharResumo;
 $('rest-sub').onclick = () => addRest(-15);
 $('rest-add').onclick = () => addRest(15);
 $('rest-skip').onclick = skipRest;
@@ -701,6 +703,7 @@ window.MT = {
   Store: Store,
   exportBackup: exportBackup, importBackup: importBackup,
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
+  get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers
 };
 
@@ -708,4 +711,4 @@ boot();
 
 /* export só pra fechar a dependência circular com history.js, que chama
    renderHome() depois de apagar ou editar a data de um treino */
-export { renderHome, byKey, PROGRAM, setPROGRAM, showScreen, updateTrainingBadge, settings };
+export { renderHome, byKey, PROGRAM, setPROGRAM, showScreen, updateTrainingBadge, settings, avatar };

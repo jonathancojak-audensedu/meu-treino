@@ -10,7 +10,8 @@ import {
   unitOf, fmtRest, fmtSet, summarizeSets
 } from './ui.js';
 import { history, saveHistory, renderHistory, exerciciosComHistorico, editarDataTreino } from './history.js';
-import { byKey, PROGRAM, showScreen, updateTrainingBadge, settings, renderHome } from './main.js';
+import { byKey, PROGRAM, showScreen, updateTrainingBadge, settings, renderHome, avatar } from './main.js';
+import { profile } from './onboarding.js';
 
 let overrides = {};
 let customEx = {};
@@ -1217,6 +1218,202 @@ function renderSummary(entry, previous, prs, todayCount){
   $('sum-editar-horario').onclick = () => editarDataTreino(entry.id, atualizado => {
     $('sum-editar-horario').querySelector('.v').textContent = Math.round(atualizado.duration / 60) + ' min';
   });
+  prepararCompartilhamento(entry, prs);
+}
+
+/* -------------------------------------------------------------------------
+   17. COMPARTILHAR RESUMO
+   A imagem e gerada assim que o resumo renderiza, nunca dentro do clique de
+   compartilhar: no iOS, navigator.share só funciona chamado de forma
+   síncrona dentro do próprio gesto de toque, sem nenhum await antes dele.
+   ------------------------------------------------------------------------- */
+let shareFile = null;
+
+function carregarImagem(src){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function truncarTexto(ctx, texto, maxWidth){
+  if(ctx.measureText(texto).width <= maxWidth) return texto;
+  let t = texto;
+  while(t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
+  return t + '…';
+}
+
+async function gerarImagemResumo(entry, prs){
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080; canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+  if(!ctx) return null;
+
+  if(document.fonts){
+    try{
+      await Promise.all([
+        document.fonts.load('600 40px "Space Grotesk"'),
+        document.fonts.load('700 64px "Space Grotesk"'),
+        document.fonts.load('600 36px "Space Grotesk"'),
+        document.fonts.load('600 84px "JetBrains Mono"'),
+        document.fonts.load('600 28px "JetBrains Mono"'),
+        document.fonts.load('400 32px "JetBrains Mono"')
+      ]);
+      await document.fonts.ready;
+    }catch(e){ /* segue com a fonte de sistema, melhor que travar */ }
+  }
+
+  const W = 1080, MX = 80;
+  ctx.fillStyle = '#101314';
+  ctx.fillRect(0, 0, W, 1920);
+
+  const cx = MX + 64, cy = 170, r = 64;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  ctx.fillStyle = '#232830';
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  if(avatar){
+    try{
+      const img = await carregarImagem(avatar);
+      ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
+    }catch(e){ /* sem foto, fica so o fundo */ }
+  }
+  ctx.restore();
+  if(!avatar){
+    ctx.fillStyle = '#7f898e';
+    ctx.font = '700 48px "Space Grotesk"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(profile && profile.nome ? profile.nome[0].toUpperCase() : '', cx, cy + 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  ctx.fillStyle = '#eef1f0';
+  ctx.font = '600 40px "Space Grotesk"';
+  ctx.fillText(profile && profile.nome ? profile.nome : 'Meu Treino', cx + r + 32, cy + 14);
+
+  let y = 340;
+  ctx.fillStyle = '#b9ff3c';
+  ctx.font = '700 64px "Space Grotesk"';
+  ctx.fillText(truncarTexto(ctx, entry.name, W - MX * 2), MX, y);
+
+  y += 56;
+  ctx.fillStyle = '#a3adb2';
+  ctx.font = '400 32px "JetBrains Mono"';
+  ctx.fillText(new Date(entry.date).toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'}), MX, y);
+
+  y += 110;
+  const stats = [
+    {v: Math.round(entry.duration / 60), l: 'MINUTOS'},
+    {v: entry.setsDone, l: 'SÉRIES'},
+    {v: entry.volume, l: 'VOLUME KG'}
+  ];
+  const colW = (W - MX * 2) / 3;
+  stats.forEach((s, i) => {
+    const sx = MX + colW * i;
+    ctx.fillStyle = '#b9ff3c';
+    ctx.font = '600 84px "JetBrains Mono"';
+    ctx.fillText(String(s.v), sx, y);
+    ctx.fillStyle = '#7f898e';
+    ctx.font = '600 26px "JetBrains Mono"';
+    ctx.fillText(s.l, sx, y + 40);
+  });
+
+  y += 100;
+  ctx.strokeStyle = '#2a3034';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(MX, y); ctx.lineTo(W - MX, y); ctx.stroke();
+
+  if(prs.length){
+    y += 70;
+    ctx.fillStyle = '#9ad02f';
+    ctx.font = '600 28px "JetBrains Mono"';
+    ctx.fillText('RECORDES', MX, y);
+    prs.slice(0, 4).forEach(p => {
+      y += 64;
+      ctx.fillStyle = '#eef1f0';
+      ctx.font = '600 36px "Space Grotesk"';
+      ctx.textAlign = 'left';
+      ctx.fillText(truncarTexto(ctx, p.name, W - MX * 2 - 260), MX, y);
+      ctx.fillStyle = '#b9ff3c';
+      ctx.font = '600 32px "JetBrains Mono"';
+      ctx.textAlign = 'right';
+      ctx.fillText(p.detail, W - MX, y);
+      ctx.textAlign = 'left';
+    });
+    y += 30;
+  }
+
+  y += 70;
+  ctx.fillStyle = '#7f898e';
+  ctx.font = '600 28px "JetBrains Mono"';
+  ctx.fillText('SÉRIES REGISTRADAS', MX, y);
+  y += 20;
+
+  const limiteY = 1780, linhaAltura = 72;
+  let mostrados = 0;
+  for(const ex of entry.exercises){
+    if(y + linhaAltura > limiteY) break;
+    y += linhaAltura;
+    ctx.fillStyle = '#eef1f0';
+    ctx.font = '600 34px "Space Grotesk"';
+    ctx.fillText(truncarTexto(ctx, ex.name, W - MX * 2), MX, y);
+    y += 32;
+    ctx.fillStyle = '#a3adb2';
+    ctx.font = '400 26px "JetBrains Mono"';
+    ctx.fillText(truncarTexto(ctx, ex.sets.map(s => fmtSet(s, ex.type)).join('   '), W - MX * 2), MX, y);
+    mostrados++;
+  }
+  const restantes = entry.exercises.length - mostrados;
+  if(restantes > 0){
+    y += 50;
+    ctx.fillStyle = '#7f898e';
+    ctx.font = '400 28px "JetBrains Mono"';
+    ctx.fillText('+ ' + restantes + (restantes === 1 ? ' exercício' : ' exercícios'), MX, y);
+  }
+
+  ctx.fillStyle = '#3a4247';
+  ctx.font = '600 26px "JetBrains Mono"';
+  ctx.textAlign = 'center';
+  ctx.fillText('MEU TREINO', W / 2, 1870);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+async function prepararCompartilhamento(entry, prs){
+  shareFile = null;
+  try{
+    const blob = await gerarImagemResumo(entry, prs);
+    if(blob) shareFile = new File([blob], 'treino-' + entry.id + '.png', {type: 'image/png'});
+  }catch(e){ shareFile = null; }
+}
+
+function baixarImagem(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = file.name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* só pra inspecionar pelos testes se a imagem já ficou pronta */
+function getShareFile(){ return shareFile; }
+
+function compartilharResumo(){
+  if(!shareFile){ toast('A imagem ainda está sendo preparada, tenta de novo em instantes'); return; }
+  const podeCompartilharArquivo = typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare({files: [shareFile]}));
+  if(podeCompartilharArquivo){
+    navigator.share({files: [shareFile], title: 'Meu Treino'}).catch(() => {});
+  }else{
+    baixarImagem(shareFile);
+  }
 }
 
 function setOverrides(novo){ overrides = (novo && typeof novo === 'object') ? novo : {}; }
@@ -1240,5 +1437,6 @@ export {
   toggleRestExpand, addRest, skipRest, releaseWake,
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
-  hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers
+  hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
+  compartilharResumo, getShareFile
 };
