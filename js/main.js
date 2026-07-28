@@ -396,6 +396,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v28', itens: [
+    'Mais variedade nos exercícios sugeridos, principalmente no dia de perna'
+  ]},
   {versao: 'meu-treino-v27', itens: [
     'Tela Sobre, com a versão do app e as novidades da atualização',
     'Lembrete pra fazer backup a cada 15 treinos ou 30 dias',
@@ -775,7 +778,7 @@ window.MT = {
   get program(){ return PROGRAM; },
   get favoritos(){ return favoritos; },
   get avatar(){ return avatar; },
-  EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, SPLITS: SPLITS,
+  EX: EX, META: META, EQUIP: EQUIP, PARAMS: PARAMS, MODELOS: MODELOS, SPLITS: SPLITS,
   gerar: gerarPrograma, volume: volumeSemanal, tempo: tempoEstimado, sugerir: sugerirCarga,
   exerciciosComHistorico: exerciciosComHistorico, serieTemporal: serieTemporalDoExercicio,
   saude: calcularSaude,

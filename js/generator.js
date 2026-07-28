@@ -43,8 +43,8 @@ const MODELOS = {
   full_C: {nome:'Corpo inteiro C', block:'full', slots:[['emp_h','acessorio'],['pux_h','acessorio'],['joelho','acessorio'],['quadril','acessorio'],['lateral','isolado'],['core','isolado']]},
   upper_A:{nome:'Superiores A', block:'upper', slots:[['emp_h','principal'],['pux_h','principal'],['emp_v','acessorio'],['pux_v','acessorio'],['lateral','isolado'],['biceps','isolado'],['triceps','isolado']]},
   upper_B:{nome:'Superiores B', block:'upper', slots:[['pux_v','principal'],['emp_v','principal'],['pux_h','acessorio'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['biceps','isolado']]},
-  lower_A:{nome:'Inferiores A', block:'lower', slots:[['joelho','principal'],['quadril','acessorio'],['joelho','acessorio'],['quadril','acessorio'],['panturrilha','isolado'],['core','isolado']]},
-  lower_B:{nome:'Inferiores B', block:'lower', slots:[['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['joelho','acessorio'],['panturrilha','isolado'],['core','isolado']]},
+  lower_A:{nome:'Inferiores A', block:'lower', slots:[['joelho','principal'],['quadril','acessorio'],['joelho','acessorio'],['quadril','isolado'],['panturrilha','isolado'],['core','isolado']]},
+  lower_B:{nome:'Inferiores B', block:'lower', slots:[['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['joelho','isolado'],['panturrilha','isolado'],['core','isolado']]},
   push:   {nome:'Empurrar', block:'upper', slots:[['emp_h','principal'],['emp_v','principal'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['triceps','isolado']]},
   pull:   {nome:'Puxar', block:'upper', slots:[['pux_v','principal'],['pux_h','principal'],['pux_h','acessorio'],['pux_v','acessorio'],['biceps','isolado'],['biceps','isolado']]},
   legs:   {nome:'Pernas', block:'lower', slots:[['joelho','principal'],['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['panturrilha','isolado'],['core','isolado']]}
@@ -108,7 +108,7 @@ function escolherExercicio(padrao, papel, perfil, usados, noDia){
     if(usados.indexOf(id) === -1 && t.nivel >= melhorNivel - 1) pt += 30;
     if(usados.indexOf(id) !== -1) pt -= 10;
     if(t.iso && papel !== 'isolado') pt -= 60;                     // isolamento não substitui composto
-    if(!t.iso && papel === 'isolado') pt -= 12;
+    if(!t.iso && papel === 'isolado') pt -= 50;                    // e o espaço isolado é pra isolamento
     pt += t.nivel * 7;                                             // usa o melhor equipamento disponível
     pt += (3 - Math.abs(alvo - t.c)) * 4;
     if(prio.some(g => grupoBate(g, t.m))) pt += 8;

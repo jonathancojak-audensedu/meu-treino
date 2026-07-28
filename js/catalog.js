@@ -346,7 +346,18 @@ const META = {
  'elevacao_frontal_unilateral','encolhimento_trapezio','rosca_concentrada','rosca_punho','triceps_coice',
  'cadeira_adutora','cadeira_abdutora','extensora_unilateral','flexora_unilateral','gluteo_4_apoios',
  'gluteo_caneleira','abdominal_infra','elevacao_pernas_suspenso','roda_abdominal','prancha_elevacao_membro',
- 'abdominal_bicicleta','abdominal_canivete','prancha_dinamica','russian_twist','superman','abdominal_maquina'
+ 'abdominal_bicicleta','abdominal_canivete','prancha_dinamica','russian_twist','superman','abdominal_maquina',
+ /* catálogo ampliado (item 5.1 do ROADMAP): variantes de padrão só isolamento
+    (bíceps, tríceps, lateral de ombro, panturrilha, core, pegada) que entraram
+    depois e ficaram fora desta lista. Sem a marca, nunca eram escolhidas: só
+    concorrem de igual pra igual com o resto do padrão dentro de um espaço
+    isolado. Mergulho e tríceps no banco ficam de fora de propósito, porque
+    recrutam peito e ombro o bastante pra não contar como isolamento puro. */
+ 'remada_alta','remada_alta_halteres','rosca_inversa','rosca_21','rosca_unilateral_halteres',
+ 'rosca_martelo_unilateral','rosca_scott_unilateral','rosca_barra_w','rosca_zottman',
+ 'triceps_frances','triceps_unilateral','triceps_corda_unilateral','triceps_frances_unilateral',
+ 'triceps_testa_unilateral','panturrilha_leg_press','panturrilha_unilateral_corpo','panturrilha_smith',
+ 'panturrilha_burro','hiperextensao_banco','farmer_unilateral'
 ].forEach(id => { if(META[id]) META[id].iso = true; });
 
 /* qualidade do equipamento, para não preferir elástico onde existe barra */
