@@ -73,6 +73,18 @@ const HISTORICO = [
   $('btn-canceledit').click();
   await wait(20);
 
+  console.log('\n== stepper de reps de uma serie durante o treino tambem alcanca 44px (achado do item de imagens de execucao) ==');
+  $('btn-begin').click();
+  await wait(20);
+  const stepperSerie = $('exlist').querySelector('.setrow .stepper button');
+  check('stepper de reps da serie existe', !!stepperSerie);
+  check('stepper de reps da serie alcanca 44px de altura', alturaBtn(stepperSerie) === 44);
+  check('stepper de reps da serie alcanca 44px de largura', larguraBtn(stepperSerie) === 44);
+  $('btn-cancel').click();
+  await wait(20);
+  $('sheet-body').querySelector('[data-r="1"]').click();
+  await wait(30);
+
   $('nav-history').click();
   await wait(20);
   $('btn-calendar').click();

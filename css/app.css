@@ -114,18 +114,18 @@
   .exbody{display:block;}
   .excard.collapsed .exbody{display:none;}
 
-  .setrow-head{display:grid; grid-template-columns: 24px 1fr 1fr 36px 46px; gap:7px; align-items:center; padding:2px 12px 4px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-faint);}
-  .setrow{display:grid; grid-template-columns: 24px 1fr 1fr 36px 46px; gap:7px; align-items:start; padding:5px 12px;}
+  .setrow-head{display:grid; grid-template-columns: 24px 1fr 1fr 44px 46px; gap:7px; align-items:center; padding:2px 12px 4px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-faint);}
+  .setrow{display:grid; grid-template-columns: 24px 1fr 1fr 44px 46px; gap:7px; align-items:center; padding:5px 12px;}
   .setrow.done{background:rgba(185,255,60,.05);}
-  .setrow .setnum{font-family:var(--mono); font-size:13px; color:var(--text-dim); text-align:center; padding-top:14px;}
+  .setrow .setnum{font-family:var(--mono); font-size:13px; color:var(--text-dim); text-align:center;}
   .setrow .field{display:flex; flex-direction:column;}
   .setrow input{width:100%; background:var(--bg-elev); border:1px solid var(--line); border-radius:8px; color:var(--text); font-family:var(--mono); font-size:16px; padding:11px 4px; text-align:center;}
   .setrow input::placeholder{color:var(--text-faint); font-size:14px;}
   .setrow input:focus{outline:none; border-color:var(--accent);}
   .setrow input.auto{color:var(--text-dim);}
   .setrow .prevhint{font-size:11px; color:var(--text-faint); text-align:center; margin-top:3px; font-family:var(--mono); min-height:14px;}
-  .stepper{display:flex; flex-direction:column; gap:3px;}
-  .stepper button{width:36px; height:21px; border-radius:7px; border:1px solid var(--line-strong); background:var(--card-2); color:var(--text-dim); font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;}
+  .stepper{display:flex; flex-direction:column; gap:4px;}
+  .stepper button{width:44px; height:44px; border-radius:9px; border:1px solid var(--line-strong); background:var(--card-2); color:var(--text-dim); font-size:16px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;}
   .stepper button:active{background:var(--accent); color:#111; border-color:var(--accent);}
   .checkbtn{width:44px; height:44px; border-radius:10px; border:1px solid var(--line-strong); background:var(--bg-elev); color:var(--text-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px;}
   .checkbtn.done{background:var(--accent); border-color:var(--accent); color:#111; font-weight:700;}
