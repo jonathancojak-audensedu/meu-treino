@@ -4,16 +4,19 @@
    com peso, equipamento exigido, articulações que carrega, complexidade e
    marcação de isolamento. EQUIP lista o que existe disponível em cada lugar.
    type: 'reps' (carga x repetições) | 'time' (segundos) | 'dist' (metros)
+   img:true indica que existem duas fotos de execução em img/exercicios/,
+   nomeadas {id}-0.webp/.jpg e {id}-1.webp/.jpg (ver README.md pra fonte e
+   licença). Piloto cobrindo só peito por enquanto.
    ========================================================================= */
 
 const EX = {
-  supino_reto:        {name:'Supino reto barra', type:'reps', group:'peito', note:'Escápulas retraídas, cotovelo a cerca de 45 graus. Progressão: suba 2,5 a 5% quando bater RIR 2 em todas as séries por duas sessões seguidas.', alts:['supino_maquina','supino_halteres']},
-  supino_maquina:     {name:'Supino em máquina pegada neutra', type:'reps', group:'peito'},
-  supino_halteres:    {name:'Supino reto halteres', type:'reps', group:'peito'},
-  supino_incl_hal:    {name:'Supino inclinado halteres', type:'reps', group:'peito', alts:['supino_incl_barra']},
-  supino_incl_barra:  {name:'Supino inclinado barra', type:'reps', group:'peito', alts:['supino_incl_hal']},
-  crucifixo:          {name:'Crucifixo halteres ou peck deck', type:'reps', group:'peito', note:'Dor no ombro: troque por cross over com cabo baixo.', alts:['crossover']},
-  crossover:          {name:'Cross over cabo baixo', type:'reps', group:'peito'},
+  supino_reto:        {name:'Supino reto barra', type:'reps', group:'peito', note:'Escápulas retraídas, cotovelo a cerca de 45 graus. Progressão: suba 2,5 a 5% quando bater RIR 2 em todas as séries por duas sessões seguidas.', alts:['supino_maquina','supino_halteres'], img:true},
+  supino_maquina:     {name:'Supino em máquina pegada neutra', type:'reps', group:'peito', img:true},
+  supino_halteres:    {name:'Supino reto halteres', type:'reps', group:'peito', img:true},
+  supino_incl_hal:    {name:'Supino inclinado halteres', type:'reps', group:'peito', alts:['supino_incl_barra'], img:true},
+  supino_incl_barra:  {name:'Supino inclinado barra', type:'reps', group:'peito', alts:['supino_incl_hal'], img:true},
+  crucifixo:          {name:'Crucifixo halteres ou peck deck', type:'reps', group:'peito', note:'Dor no ombro: troque por cross over com cabo baixo.', alts:['crossover'], img:true},
+  crossover:          {name:'Cross over cabo baixo', type:'reps', group:'peito', img:true},
 
   remada_curvada:     {name:'Remada curvada barra', type:'reps', group:'costas', note:'Puxe com o cotovelo, tronco firme, sem balanço.', alts:['remada_cavalinho','remada_baixa']},
   remada_cavalinho:   {name:'Remada cavalinho apoiada', type:'reps', group:'costas'},
@@ -71,15 +74,15 @@ const EX = {
   corda_pular:        {name:'Corda', type:'cardio', group:'cardio'},
   caminhada_externa:  {name:'Caminhada ao ar livre', type:'cardio', group:'cardio'},
 
-  supino_declinado:        {name:'Supino declinado barra', type:'reps', group:'peito'},
-  crucifixo_inclinado:     {name:'Crucifixo inclinado halteres', type:'reps', group:'peito'},
-  peck_deck:               {name:'Peck deck (voador)', type:'reps', group:'peito'},
+  supino_declinado:        {name:'Supino declinado barra', type:'reps', group:'peito', img:true},
+  crucifixo_inclinado:     {name:'Crucifixo inclinado halteres', type:'reps', group:'peito', img:true},
+  peck_deck:               {name:'Peck deck (voador)', type:'reps', group:'peito', img:true},
   pullover:                {name:'Pullover halteres', type:'reps', group:'costas'},
-  supino_halteres_unilateral: {name:'Supino unilateral com halteres', type:'reps', group:'peito'},
-  crossover_unilateral:    {name:'Crossover unilateral na polia', type:'reps', group:'peito'},
-  flexao_declinada:        {name:'Flexão declinada', type:'reps', group:'peito'},
+  supino_halteres_unilateral: {name:'Supino unilateral com halteres', type:'reps', group:'peito', img:true},
+  crossover_unilateral:    {name:'Crossover unilateral na polia', type:'reps', group:'peito', img:true},
+  flexao_declinada:        {name:'Flexão declinada', type:'reps', group:'peito', img:true},
   flexao_joelho:           {name:'Flexão com joelho apoiado', type:'reps', group:'peito'},
-  supino_maquina_convergente: {name:'Supino em máquina convergente', type:'reps', group:'peito'},
+  supino_maquina_convergente: {name:'Supino em máquina convergente', type:'reps', group:'peito', img:true},
 
   desenvolvimento_arnold:  {name:'Desenvolvimento Arnold', type:'reps', group:'ombro'},
   elevacao_frontal:        {name:'Elevação frontal', type:'reps', group:'ombro'},
@@ -368,9 +371,9 @@ Object.keys(META).forEach(id => {
 
 /* exercícios que ainda não existem no catálogo principal */
 const EX_EXTRA = {
-  flexao:             {name:'Flexão de braço', type:'reps', group:'peito'},
-  flexao_inclinada:   {name:'Flexão com mãos apoiadas', type:'reps', group:'peito', note:'Quanto mais alto o apoio, mais fácil. Comece na altura que você faz 8 repetições limpas.'},
-  flexao_elastico:    {name:'Supino com elástico', type:'reps', group:'peito'},
+  flexao:             {name:'Flexão de braço', type:'reps', group:'peito', img:true},
+  flexao_inclinada:   {name:'Flexão com mãos apoiadas', type:'reps', group:'peito', note:'Quanto mais alto o apoio, mais fácil. Comece na altura que você faz 8 repetições limpas.', img:true},
+  flexao_elastico:    {name:'Supino com elástico', type:'reps', group:'peito', img:true},
   desenv_elastico:    {name:'Desenvolvimento com elástico', type:'reps', group:'ombro'},
   pike_pushup:        {name:'Flexão pike', type:'reps', group:'ombro', note:'Quadril alto, corpo em V. É a flexão que vira desenvolvimento de ombro.'},
   remada_halteres:    {name:'Remada curvada com halteres', type:'reps', group:'costas'},

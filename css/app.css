@@ -99,6 +99,11 @@
   .previewnote{font-size:12px; color:var(--text-faint); text-align:center; padding:4px 20px 0; line-height:1.5;}
   .addex{width:100%; background:var(--card-2); border:1px dashed var(--line-strong); color:var(--text-dim); border-radius:var(--radius); padding:16px; font-size:13.5px; font-family:inherit; cursor:pointer; min-height:52px;}
   .addex:active{border-color:var(--accent); color:var(--accent);}
+  .exheadrow{display:flex; align-items:flex-start;}
+  .exheadrow.has-thumb .exhead{padding-left:8px;}
+  .exthumb{width:56px; height:44px; min-height:44px; margin:0 0 0 16px; align-self:center; flex-shrink:0; padding:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card-2); cursor:pointer;}
+  .exthumb:active{border-color:var(--accent);}
+  .exthumb img{width:100%; height:100%; object-fit:cover; display:block;}
   .exhead{padding:14px 16px 12px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; width:100%; background:none; border:none; color:inherit; text-align:left; font-family:inherit; cursor:pointer;}
   .exhead .idx{font-family:var(--mono); font-size:12px; color:var(--accent-dim); margin-bottom:3px;}
   .exhead .exname{font-family:var(--display); font-weight:600; font-size:16px; line-height:1.25;}
@@ -244,6 +249,16 @@
   .sheetact button{flex:1; min-height:50px; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; font-family:var(--display);}
   .btn-primary{background:var(--accent); color:#111; border:none;}
   .btn-ghost{background:var(--card-2); color:var(--text); border:1px solid var(--line);}
+  .execframes{position:relative; width:100%; aspect-ratio:400/267; border-radius:12px; overflow:hidden; background:var(--card-2); margin-bottom:12px;}
+  .execframes picture{position:absolute; inset:0; display:block;}
+  .execframes picture img{width:100%; height:100%; object-fit:cover; display:block;}
+  .execframes picture:last-child{opacity:0; transition:opacity .15s ease;}
+  .execframes.frame-b picture:first-child{opacity:0;}
+  .execframes.frame-b picture:last-child{opacity:1;}
+  .execframes.lado-a-lado{position:static; display:flex; gap:8px; aspect-ratio:auto;}
+  .execframes.lado-a-lado picture{position:static; flex:1; border-radius:10px; overflow:hidden;}
+  .execact{display:flex; justify-content:center; margin-bottom:16px;}
+  .execact button{min-height:44px; padding:10px 20px; border-radius:12px; font-size:13.5px; font-weight:600; cursor:pointer; font-family:var(--display);}
   .btn-danger{background:#3a1f1d; color:var(--danger); border:1px solid #5c2f2b;}
   .searchbox{width:100%; background:var(--bg); border:1px solid var(--line-strong); border-radius:12px; color:var(--text); font-size:16px; padding:14px; margin-bottom:12px; font-family:inherit;}
   .searchbox:focus{outline:none; border-color:var(--accent);}

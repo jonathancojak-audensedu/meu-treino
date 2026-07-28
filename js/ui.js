@@ -2,7 +2,10 @@
    INTERFACE: seletores, folhas, confirmação, toast
    Utilitários de DOM e os primitivos de UI reaproveitados em todo o app.
    ========================================================================= */
-let backdropCloser = null;
+/* pilha de folhas abertas: a execução de exercício pode abrir por cima do
+   seletor (ex: tocar na miniatura durante a busca), então precisa lembrar
+   de quem fechar em seguida, não só de uma folha por vez */
+let backdropStack = [];
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,7 +18,7 @@ function mq(query){
 /* -------------------------------------------------------------------------
    18. FOLHAS, CONFIRMAÇÃO E TOAST
    ------------------------------------------------------------------------- */
-/* enquanto uma folha esta aberta, o resto do app fica inert: tira o fundo
+/* enquanto existe folha aberta, o resto do app fica inert: tira o fundo
    da navegacao por Tab e da leitura por teclado virtual de leitor de tela,
    sem precisar reimplementar focus trap na mao */
 function travarFundo(travar){
@@ -24,23 +27,35 @@ function travarFundo(travar){
 
 function openBackdrop(el, onClose, skipFocus){
   el.classList.add('show');
-  travarFundo(true);
-  backdropCloser = () => { el.classList.remove('show'); travarFundo(false); backdropCloser = null; if(onClose) onClose(); };
-  el.onclick = e => { if(e.target === el) backdropCloser(); };
+  if(!backdropStack.length) travarFundo(true);
+  const closer = () => {
+    el.classList.remove('show');
+    backdropStack = backdropStack.filter(c => c !== closer);
+    if(!backdropStack.length) travarFundo(false);
+    if(onClose) onClose();
+  };
+  backdropStack.push(closer);
+  el.onclick = e => { if(e.target === el) closer(); };
   if(!skipFocus){
     const focusable = el.querySelector('button, input, a');
     if(focusable) setTimeout(() => focusable.focus(), 40);
   }
 }
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && backdropCloser) backdropCloser(); });
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && backdropStack.length) backdropStack[backdropStack.length - 1]();
+});
 
-/* fecha a folha aberta no momento, se houver (usado por botões de fechar
-   fora do fluxo normal de onClose, como o "x" do calendário) */
-function fecharSheetAtual(){ if(backdropCloser) backdropCloser(); }
-/* invalida o fechador sem chamá-lo: usado quando quem resolveu a folha (ex:
-   escolher uma opção) já removeu a classe "show" na mão, pra um Escape ou
-   clique tardio no fundo não tentar fechar de novo uma folha ja fechada */
-function invalidarBackdropCloser(){ backdropCloser = null; }
+/* fecha a folha mais no topo, se houver (usado por botões de fechar fora do
+   fluxo normal de onClose, como o "x" do calendário) */
+function fecharSheetAtual(){ if(backdropStack.length) backdropStack[backdropStack.length - 1](); }
+/* invalida o fechador do topo sem chamá-lo: usado quando quem resolveu a
+   folha (ex: escolher uma opção) já removeu a classe "show" na mão, pra um
+   Escape ou clique tardio no fundo não tentar fechar de novo uma folha ja
+   fechada */
+function invalidarBackdropCloser(){
+  backdropStack.pop();
+  if(!backdropStack.length) travarFundo(false);
+}
 
 function askConfirm(opts){
   return new Promise(resolve => {
@@ -53,7 +68,7 @@ function askConfirm(opts){
         '<button class="' + (opts.danger ? 'btn-danger' : 'btn-primary') + '" data-r="1">' + esc(opts.confirmLabel || 'Confirmar') + '</button>' +
       '</div>';
     let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); travarFundo(false); backdropCloser = null; resolve(v); };
+    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); invalidarBackdropCloser(); resolve(v); };
     openBackdrop(el, () => done(false));
     $('sheet-body').querySelectorAll('[data-r]').forEach(b => b.onclick = () => done(b.dataset.r === '1'));
   });

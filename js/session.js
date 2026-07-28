@@ -6,7 +6,7 @@ import { EX, META } from './catalog.js';
 import { tempoEstimado } from './generator.js';
 import { Store } from './store.js';
 import {
-  $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, travarFundo,
+  $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser,
   unitOf, fmtRest, fmtSet, summarizeSets
 } from './ui.js';
 import { history, saveHistory, renderHistory, exerciciosComHistorico, editarDataTreino } from './history.js';
@@ -64,6 +64,68 @@ function shapeOf(i){
 function newUid(){ return 'e' + (uidSeq++) + Math.random().toString(36).slice(2, 6); }
 function videoUrl(name){
   return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' execução correta técnica');
+}
+
+/* -------------------------------------------------------------------------
+   FOTOS DE EXECUÇÃO
+   Piloto cobrindo só peito (ver README.md pra fonte e licença das fotos).
+   def.img:true indica que existem duas fotos em img/exercicios/{id}-0 e -1,
+   cada uma em .webp com .jpg de reserva. Miniatura clicável ao lado do nome
+   abre as duas fotos maiores, alternando pra simular o movimento.
+   ------------------------------------------------------------------------- */
+function fotoExecucao(id, i){ return './img/exercicios/' + id + '-' + i; }
+
+function thumbHTML(id, def){
+  if(!def.img) return '';
+  return '<button class="exthumb" data-thumb="' + id + '" aria-label="Ver execução de ' + esc(def.name) + '">' +
+    '<picture><source srcset="' + fotoExecucao(id, 0) + '.webp" type="image/webp">' +
+    '<img src="' + fotoExecucao(id, 0) + '.jpg" alt="" loading="lazy" width="400" height="267"></picture>' +
+    '</button>';
+}
+
+let execucaoInterval = null;
+function pararAnimacaoExecucao(){
+  if(execucaoInterval){ clearInterval(execucaoInterval); execucaoInterval = null; }
+}
+
+function abrirExecucao(id){
+  const def = defOf(id);
+  if(!def.img) return;
+  const el = $('exec-backdrop');
+  const reduzMovimento = mq('(prefers-reduced-motion: reduce)');
+  const frame = i => '<picture><source srcset="' + fotoExecucao(id, i) + '.webp" type="image/webp">' +
+    '<img src="' + fotoExecucao(id, i) + '.jpg" alt="Execução de ' + esc(def.name) + ', quadro ' + (i + 1) + '" width="400" height="267"></picture>';
+
+  $('exec-body').innerHTML =
+    '<div class="sheethead"><h2 id="exec-title">' + esc(def.name) + '</h2>' +
+    '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
+    (reduzMovimento
+      ? '<div class="execframes lado-a-lado">' + frame(0) + frame(1) + '</div>'
+      : '<div class="execframes" id="exec-frames">' + frame(0) + frame(1) + '</div>' +
+        '<div class="execact"><button class="btn-ghost" id="exec-pausar" aria-pressed="false">Pausar</button></div>') +
+    '<div class="sheetact" style="margin-top:16px">' +
+      '<button class="btn-ghost" id="exec-youtube">Ver no YouTube</button>' +
+      '<button class="btn-primary" data-fechar="1">Fechar</button>' +
+    '</div>';
+
+  openBackdrop(el, pararAnimacaoExecucao, true);
+  $('exec-body').querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => { pararAnimacaoExecucao(); fecharSheetAtual(); });
+  $('exec-youtube').onclick = () => window.open(videoUrl(def.name), '_blank');
+
+  if(!reduzMovimento){
+    const frames = $('exec-frames');
+    let mostrandoB = false;
+    const alternar = () => { mostrandoB = !mostrandoB; frames.classList.toggle('frame-b', mostrandoB); };
+    execucaoInterval = setInterval(alternar, 900);
+    let pausado = false;
+    $('exec-pausar').onclick = () => {
+      pausado = !pausado;
+      pararAnimacaoExecucao();
+      if(!pausado) execucaoInterval = setInterval(alternar, 900);
+      $('exec-pausar').setAttribute('aria-pressed', pausado ? 'true' : 'false');
+      $('exec-pausar').textContent = pausado ? 'Retomar' : 'Pausar';
+    };
+  }
 }
 
 function repTarget(reps){
@@ -503,6 +565,8 @@ function cardHTML(item, pos){
   return '<div class="excard' + (allDone ? ' done collapsed' : '') + '" id="card-' + item.uid + '" data-uid="' + item.uid + '">' +
     '<div class="swipehint" aria-hidden="true">excluir</div>' +
     '<div class="cardinner">' +
+    '<div class="exheadrow' + (def.img ? ' has-thumb' : '') + '">' +
+    thumbHTML(item.ex, def) +
     '<button class="exhead" data-toggle="' + item.uid + '" aria-expanded="' + (allDone ? 'false' : 'true') + '">' +
       '<span class="exmain">' +
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
@@ -513,6 +577,7 @@ function cardHTML(item, pos){
       '</span>' +
       '<span class="prog">' + doneCount + '/' + item.sets + '</span>' +
     '</button>' +
+    '</div>' +
     '<div class="exbody">' +
       '<div class="setrow-head"><div></div><div>' + (def.type === 'cardio' ? 'Dist.' : 'Carga') + '</div><div>' + (def.type === 'reps' ? 'Reps' : def.type === 'time' ? 'Tempo' : def.type === 'cardio' ? 'Duração' : 'Dist.') + '</div><div></div><div></div></div>' +
       rows +
@@ -976,6 +1041,7 @@ function pickExercise(title, suggested, replacing){
     const optRow = x => {
       const fav = !!favoritos[x.id];
       return '<div class="opt">' +
+        thumbHTML(x.id, x.def) +
         '<button class="optselect" data-v="' + x.id + '">' +
           '<span class="optmain">' + esc(x.def.name) +
             '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span>' +
@@ -1022,7 +1088,7 @@ function pickExercise(title, suggested, replacing){
     draw('');
 
     let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); travarFundo(false); invalidarBackdropCloser(); resolve(v || null); };
+    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); invalidarBackdropCloser(); resolve(v || null); };
     openBackdrop(el, () => done(null), true);
 
     $('ex-search').oninput = ev => draw(ev.target.value);
@@ -1034,6 +1100,8 @@ function pickExercise(title, suggested, replacing){
       draw($('ex-search').value);
     };
     $('sheet-body').onclick = ev => {
+      const thumb = ev.target.closest('[data-thumb]');
+      if(thumb) return abrirExecucao(thumb.dataset.thumb);
       const star = ev.target.closest('[data-star]');
       if(star){
         const id = star.dataset.star;
@@ -1442,5 +1510,6 @@ export {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile
+  compartilharResumo, getShareFile,
+  abrirExecucao
 };

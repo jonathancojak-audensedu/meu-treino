@@ -84,6 +84,10 @@ Instalar não é opcional se você leva o histórico a sério. No iOS, o Safari 
 
 Para inspecionar o estado durante um treino, abra o console e use `MT.session`, `MT.history` ou `MT.overrides`.
 
+## Créditos
+
+As fotos de execução dos exercícios (piloto cobrindo o grupo peito, em `img/exercicios/`) vêm de [free-exercise-db](https://github.com/yuhonas/free-exercise-db), de yuhonas, licenciado sob [Unlicense](https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE) (domínio público, cópia e redistribuição livres). As imagens originais foram redimensionadas para 400px de largura e recomprimidas em WebP qualidade 80, com JPEG de reserva para navegadores sem suporte a WebP.
+
 ## Próximo passo
 
 O onboarding que monta o treino a partir de respostas. A estrutura já está pronta para isso: o `PROGRAM` só prescreve padrões de movimento e o `EX` diz o que cada exercício exige. Falta o questionário e o motor de regras que escolhe o split e preenche os exercícios conforme equipamento disponível e dores relatadas.

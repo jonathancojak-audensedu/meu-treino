@@ -30,7 +30,8 @@ import {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile
+  compartilharResumo, getShareFile,
+  abrirExecucao
 } from './session.js';
 import {
   PERGUNTAS, ROTULOS, profile, setProfile, corpo, setCorpo, onbIdx,
@@ -396,6 +397,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v31', itens: [
+    'Fotos de execução nos exercícios de peito (piloto): toque na miniatura pra ver em tamanho maior'
+  ]},
   {versao: 'meu-treino-v29', itens: [
     'Ajustes de acessibilidade: contraste de texto, áreas de toque maiores e navegação por teclado nas folhas'
   ]},
@@ -482,6 +486,8 @@ $('exlist').addEventListener('click', e => {
   const t = e.target;
   const note = t.closest('[data-note]');
   if(note){ const n = $('note-' + note.dataset.note); if(n) n.classList.toggle('open'); return; }
+  const thumb = t.closest('[data-thumb]');
+  if(thumb) return abrirExecucao(thumb.dataset.thumb);
 
   if(editState){
     if(t.closest('[data-addex]')) return editAddExercise();
