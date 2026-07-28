@@ -16,6 +16,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <title>Meu Treino</title>
 <link rel="stylesheet" href="./css/app.css">
+<!-- deixa o navegador buscar todo o grafo de modulos em paralelo com o
+     download/parse do main.js, em vez de descobrir os imports so depois
+     de main.js chegar: economiza uma ida e volta em conexao lenta -->
+<link rel="modulepreload" href="./js/main.js">
+<link rel="modulepreload" href="./js/catalog.js">
+<link rel="modulepreload" href="./js/generator.js">
+<link rel="modulepreload" href="./js/store.js">
+<link rel="modulepreload" href="./js/ui.js">
+<link rel="modulepreload" href="./js/history.js">
+<link rel="modulepreload" href="./js/session.js">
+<link rel="modulepreload" href="./js/onboarding.js">
 </head>
 <body>
 <div id="app">
