@@ -86,7 +86,7 @@ Para inspecionar o estado durante um treino, abra o console e use `MT.session`, 
 
 ## Créditos
 
-As fotos de execução dos exercícios (piloto cobrindo o grupo peito, em `img/exercicios/`) vêm de [free-exercise-db](https://github.com/yuhonas/free-exercise-db), de yuhonas, licenciado sob [Unlicense](https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE) (domínio público, cópia e redistribuição livres). As imagens originais foram redimensionadas para 400px de largura e recomprimidas em WebP qualidade 80, com JPEG de reserva para navegadores sem suporte a WebP.
+As fotos de execução dos exercícios (em `img/exercicios/`, cobrindo peito e a maior parte dos demais grupos) vêm de [free-exercise-db](https://github.com/yuhonas/free-exercise-db), de yuhonas, licenciado sob [Unlicense](https://github.com/yuhonas/free-exercise-db/blob/main/LICENSE) (domínio público, cópia e redistribuição livres). As imagens originais foram redimensionadas para 400px de largura e recomprimidas em WebP qualidade 80, com JPEG de reserva para navegadores sem suporte a WebP. Alguns exercícios do catálogo ficam sem foto por não ter correspondente identificado na fonte.
 
 ## Próximo passo
 

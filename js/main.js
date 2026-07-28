@@ -397,6 +397,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v33', itens: [
+    'Fotos de execução ampliadas pra costas, ombro, braços, pernas, posterior, panturrilha, core, pegada e cardio'
+  ]},
   {versao: 'meu-treino-v31', itens: [
     'Fotos de execução nos exercícios de peito (piloto): toque na miniatura pra ver em tamanho maior'
   ]},

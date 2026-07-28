@@ -1,12 +1,14 @@
 const { boot, usar, wait, criarCheck, seletor } = require('./_helpers');
 const check = criarCheck();
 
-/* fotos de execucao (piloto peito): fonte free-exercise-db, licenca Unlicense,
-   ver README.md. Miniatura no seletor e no card do treino ativo abre as duas
-   fotos maiores, alternando pra simular o movimento. Como a miniatura pode
-   ser tocada com o seletor de exercicio ainda aberto, o visualizador usa um
-   backdrop proprio (#exec-backdrop) empilhado por cima do backdrop
-   generico (#sheet-backdrop), daí os testes de pilha de folhas abaixo. */
+/* fotos de execucao: fonte free-exercise-db, licenca Unlicense, ver
+   README.md. Cobre peito (piloto original) e a maior parte dos demais
+   grupos (item posterior do ROADMAP). Miniatura no seletor e no card do
+   treino ativo abre as duas fotos maiores, alternando pra simular o
+   movimento. Como a miniatura pode ser tocada com o seletor de exercicio
+   ainda aberto, o visualizador usa um backdrop proprio (#exec-backdrop)
+   empilhado por cima do backdrop generico (#sheet-backdrop), daí os
+   testes de pilha de folhas abaixo. */
 
 const IDS_COM_FOTO = [
   'supino_reto', 'supino_maquina', 'supino_halteres', 'supino_incl_hal', 'supino_incl_barra',
@@ -15,17 +17,26 @@ const IDS_COM_FOTO = [
   'supino_maquina_convergente', 'flexao', 'flexao_inclinada', 'flexao_elastico'
 ];
 
+/* exercicios sem correspondente identificado na fonte (fica sem foto de
+   proposito, nao e falha): flexao_joelho (piloto peito) e os demais abaixo,
+   pesquisados na expansao pra outros grupos. */
+const IDS_SEM_FOTO = [
+  'flexao_joelho', 'remada_elastico', 'puxada_elastico', 'pike_pushup', 'flexao_diamante',
+  'rosca_elastico', 'avanco_smith', 'bulgaro_smith', 'agach_bulgaro_corpo', 'hip_thrust_unilateral',
+  'elevacao_pelvica_maquina', 'panturrilha_unilateral_corpo', 'panturrilha_corpo',
+  'roda_abdominal', 'bird_dog', 'corda_pular', 'caminhada_externa'
+];
+
 (async () => {
   let w = await boot();
   let $ = seletor(w);
 
-  console.log('\n== catalogo: 17 exercicios de peito marcados com img, o resto sem ==');
+  console.log('\n== catalogo: 139 exercicios marcados com img (peito + expansao), os sem correspondente ficam sem ==');
   const MT = w.MT;
   const comImg = Object.keys(MT.EX).filter(id => MT.EX[id].img);
-  check('exatamente 17 exercicios marcados com img', comImg.length === 17);
-  check('todos os 17 ids esperados tem a marca img', IDS_COM_FOTO.every(id => MT.EX[id] && MT.EX[id].img === true));
-  check('flexao_joelho (sem correspondente na fonte) fica sem imagem', !MT.EX.flexao_joelho.img);
-  check('um exercicio de outro grupo (agachamento) fica sem imagem', !MT.EX.agachamento.img);
+  check('exatamente 139 exercicios marcados com img', comImg.length === 139);
+  check('todos os ids do piloto de peito tem a marca img', IDS_COM_FOTO.every(id => MT.EX[id] && MT.EX[id].img === true));
+  check('todos os ids sem correspondente na fonte ficam sem imagem', IDS_SEM_FOTO.every(id => MT.EX[id] && !MT.EX[id].img));
 
   console.log('\n== card do treino ativo: miniatura so aparece pra quem tem foto ==');
   $('daylist').querySelector('[data-open="upperA"]').click();
@@ -33,8 +44,19 @@ const IDS_COM_FOTO = [
   $('btn-begin').click();
   await wait(20);
   const uidSupino = w.MT.session.items.find(it => it.ex === 'supino_reto').uid;
-  const uidSemFoto = w.MT.session.items.find(it => !MT.EX[it.ex].img);
-  check('existe pelo menos um exercicio sem foto nesse treino, pra comparar', !!uidSemFoto);
+  // o dia upperA padrao agora tem foto em todo exercicio (cobertura ampliada),
+  // entao adiciona um exercicio sem correspondente na fonte so pra comparar
+  $('exlist').querySelector('[data-addex]').click();
+  await wait(40);
+  $('ex-search').value = 'corda';
+  $('ex-search').dispatchEvent(new w.Event('input', {bubbles:true}));
+  await wait(10);
+  const linhaCorda = [...$('ex-options').querySelectorAll('.opt .optselect')].find(o => o.dataset.v === 'corda_pular');
+  check('exercicio sem foto (corda) aparece na busca', !!linhaCorda);
+  linhaCorda.click();
+  await wait(30);
+  const uidSemFoto = w.MT.session.items.find(it => it.ex === 'corda_pular');
+  check('exercicio sem foto foi adicionado ao treino, pra comparar', !!uidSemFoto);
   const thumbSupino = $('card-' + uidSupino).querySelector('.exthumb');
   check('miniatura aparece no card do supino reto (tem foto)', !!thumbSupino);
   check('miniatura usa <picture> com webp e jpg de reserva',
