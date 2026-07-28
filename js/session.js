@@ -22,7 +22,7 @@ let previewKey = null;
 let editState = null;
 let durationInt = null, restInt = null;
 let restExpanded = false;
-let wakeLock = null, audioCtx = null, silentAudio = null;
+let wakeLock = null, audioCtx = null;
 let scheduledBeeps = [];
 
 let uidSeq = 1;
@@ -708,7 +708,6 @@ function startRestLoop(){
   $('rest-exname').textContent = session.rest.label;
   $('rest-next').textContent = session.rest.proxima || 'Descanso';
   $('resttimer').classList.add('show');
-  keepAudioAlive(true);
   tickRest();
   restInt = setInterval(tickRest, 250);
 }
@@ -727,7 +726,6 @@ function endRest(){
   restExpanded = false;
   session.rest = null;
   saveSession();
-  keepAudioAlive(false);
   if(!scheduledBeeps.length) beep();
   scheduledBeeps = [];
   vibrate();
@@ -737,7 +735,6 @@ function skipRest(){
   $('resttimer').classList.remove('show', 'ending', 'expanded');
   restExpanded = false;
   cancelScheduledBeeps();
-  keepAudioAlive(false);
   if(session){ session.rest = null; saveSession(); }
 }
 function toggleRestExpand(){
@@ -754,7 +751,13 @@ function addRest(sec){
   tickRest();
 }
 
-/* som ------------------------------------------------------------------ */
+/* som --------------------------------------------------------------------
+   O app nunca deve tomar a sessão de áudio do aparelho: a pessoa pode estar
+   ouvindo música ou podcast durante o treino, e o bipe de descanso não pode
+   pausar isso. navigator.audioSession (Safari/iOS) marca a categoria como
+   'transient' quando existe suporte, o que deixa o áudio de outros apps
+   abaixar (duck) só durante o bipe em vez de pausar. Sem esse suporte, o
+   bipe toca do jeito que o navegador decidir, mas o app não força nada. */
 function unlockAudio(){
   if(!settings.sound) return;
   try{
@@ -768,19 +771,8 @@ function unlockAudio(){
     }
   }catch(e){ audioCtx = null; }
   try{
-    if(!silentAudio && typeof Audio === 'function'){
-      silentAudio = new Audio('silence.wav');
-      silentAudio.loop = true;
-      silentAudio.volume = 0.01;
-    }
-  }catch(e){ silentAudio = null; }
-}
-function keepAudioAlive(on){
-  if(!silentAudio || !settings.sound) return;
-  try{
-    if(on){ const p = silentAudio.play(); if(p && p.catch) p.catch(() => {}); }
-    else { silentAudio.pause(); }
-  }catch(e){ /* ignora */ }
+    if('audioSession' in navigator) navigator.audioSession.type = 'transient';
+  }catch(e){ /* sem suporte, segue sem forçar categoria */ }
 }
 function toneAt(when, freq){
   const o = audioCtx.createOscillator(), g = audioCtx.createGain();
@@ -1161,7 +1153,7 @@ async function cancelWorkout(){
   });
   if(!ok) return;
   clearInterval(durationInt); clearInterval(restInt);
-  cancelScheduledBeeps(); keepAudioAlive(false);
+  cancelScheduledBeeps();
   $('resttimer').classList.remove('show');
   releaseWake();
   await clearSession();
@@ -1228,7 +1220,7 @@ async function finishWorkout(){
   await saveHistory();
 
   clearInterval(durationInt); clearInterval(restInt);
-  cancelScheduledBeeps(); keepAudioAlive(false);
+  cancelScheduledBeeps();
   $('resttimer').classList.remove('show');
   releaseWake();
   await clearSession();

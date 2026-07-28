@@ -16,7 +16,6 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 - `js/onboarding.js` — as 8 perguntas, perfil, dados corporais, IMC/TMB
 - `sw.js` — service worker, cache offline
 - `manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png` — PWA
-- `silence.wav` — áudio silencioso que segura a sessão de som durante o descanso
 - `tests/` — testes em Node com jsdom, mais `_helpers.js` e `_loader.mjs` (infraestrutura compartilhada, não são teste em si)
 
 O app é carregado como módulos ES nativos (`<script type="module" src="./js/main.js">`), sem build. Isso tem uma consequência direta pro desenvolvimento local: **abrir `index.html` direto pelo `file://` não funciona**, porque módulos ES exigem `http(s)://`. Para testar no navegador localmente, suba um servidor estático primeiro, por exemplo `python3 -m http.server` na raiz do repositório, e abra `http://localhost:8000`.
@@ -30,6 +29,7 @@ O app é carregado como módulos ES nativos (`<script type="module" src="./js/ma
 5. **Não use travessão** em nenhum texto de interface nem em comentário.
 6. **Caminhos sempre relativos** (`./sw.js`, `icon-192.png`). O site roda em subpasta do GitHub Pages e caminho absoluto quebra o PWA.
 7. **Não adicione dependência externa nem framework.** O app precisa continuar funcionando offline, servido como arquivos estáticos.
+8. **O app nunca deve tomar a sessão de áudio do aparelho.** Nada de `<audio>` mudo em loop nem truque parecido pra "segurar" a sessão de som durante o descanso: isso pausa a música ou o podcast que a pessoa estava ouvindo em outro app. O bipe de fim de descanso toca pelo `AudioContext` (ver "Timers usam horário de término" abaixo); se o navegador suportar, `navigator.audioSession.type = 'transient'` marca a categoria certa, sempre com checagem de suporte antes de usar.
 
 ## Arquitetura que importa
 
