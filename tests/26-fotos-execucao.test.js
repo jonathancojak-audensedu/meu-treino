@@ -43,6 +43,19 @@ const IDS_COM_FOTO = [
     check('card sem foto nao tem miniatura nem quebra o layout', !$('card-' + uidSemFoto.uid).querySelector('.exthumb'));
   }
 
+  console.log('\n== link "execução" do rodapé: com foto abre o visualizador, sem foto vai direto pro YouTube ==');
+  const linkExecComFoto = $('card-' + uidSupino).querySelector('.exfoot [data-thumb]');
+  check('com foto, o link do rodape vira um <button> com data-thumb (nao <a href>)', !!linkExecComFoto && linkExecComFoto.tagName === 'BUTTON');
+  linkExecComFoto.click();
+  await wait(30);
+  check('clicar em "execução" no rodape abre o visualizador de fotos, nao navega pro YouTube', $('exec-backdrop').classList.contains('show'));
+  $('exec-body').querySelector('.closebtn').click();
+  await wait(20);
+  if(uidSemFoto){
+    const linkExecSemFoto = $('card-' + uidSemFoto.uid).querySelector('.exfoot a.minibtn.link');
+    check('sem foto, o link do rodape continua sendo <a href> pro YouTube como sempre foi', !!linkExecSemFoto && linkExecSemFoto.tagName === 'A' && linkExecSemFoto.href.includes('youtube.com'));
+  }
+
   console.log('\n== tocar na miniatura do card abre o visualizador com duas fotos, YouTube e pausar ==');
   thumbSupino.click();
   await wait(30);

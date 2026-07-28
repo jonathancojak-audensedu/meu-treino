@@ -83,6 +83,14 @@ function thumbHTML(id, def){
     '</button>';
 }
 
+/* link "execução" do rodapé do card: quando o exercício tem fotos, abre o
+   visualizador (que já traz o YouTube dentro, como complemento); sem foto,
+   vai direto pro YouTube como sempre foi */
+function execLinkHTML(id, def, texto){
+  if(def.img) return '<button class="minibtn link" data-thumb="' + id + '">' + esc(texto) + '</button>';
+  return '<a class="minibtn link" href="' + videoUrl(def.name) + '" target="_blank" rel="noopener">' + esc(texto) + '</a>';
+}
+
 let execucaoInterval = null;
 function pararAnimacaoExecucao(){
   if(execucaoInterval){ clearInterval(execucaoInterval); execucaoInterval = null; }
@@ -253,7 +261,7 @@ function openPreview(key){
         '</span>' +
       '</div>' +
       '<div class="exfoot">' +
-        '<a class="minibtn link" href="' + videoUrl(def.name) + '" target="_blank" rel="noopener">ver execução</a>' +
+        execLinkHTML(it.ex, def, 'ver execução') +
         (def.note ? '<button class="minibtn" data-note="p' + i + '">observações</button>' : '') +
       '</div>' +
       (def.note ? '<div class="noteblock" id="note-p' + i + '">' + esc(def.note) + '</div>' : '') +
@@ -340,7 +348,7 @@ function editCardHTML(item, pos, total){
         (pos > 0 ? '<button class="minibtn" data-move="' + item.uid + '|-1" aria-label="Mover para cima">↑</button>' : '') +
         (pos < total - 1 ? '<button class="minibtn" data-move="' + item.uid + '|1" aria-label="Mover para baixo">↓</button>' : '') +
         (total > 1 ? '<button class="minibtn danger" data-remove="' + item.uid + '">excluir</button>' : '') +
-        '<a class="minibtn link" href="' + videoUrl(def.name) + '" target="_blank" rel="noopener">execução</a>' +
+        execLinkHTML(item.ex, def, 'execução') +
         (def.note ? '<button class="minibtn" data-note="' + item.uid + '">observações</button>' : '') +
       '</div>' +
       (def.note ? '<div class="noteblock" id="note-' + item.uid + '">' + esc(def.note) + '</div>' : '') +
@@ -588,7 +596,7 @@ function cardHTML(item, pos){
         (pos > 0 ? '<button class="minibtn" data-move="' + item.uid + '|-1" aria-label="Mover para cima">↑</button>' : '') +
         (!isLast ? '<button class="minibtn" data-move="' + item.uid + '|1" aria-label="Mover para baixo">↓</button>' : '') +
         '<button class="minibtn danger" data-remove="' + item.uid + '">excluir</button>' +
-        '<a class="minibtn link" href="' + videoUrl(def.name) + '" target="_blank" rel="noopener">execução</a>' +
+        execLinkHTML(item.ex, def, 'execução') +
         (def.note ? '<button class="minibtn" data-note="' + item.uid + '">observações</button>' : '') +
       '</div>' +
       (def.note ? '<div class="noteblock" id="note-' + item.uid + '">' + esc(def.note) + '</div>' : '') +
