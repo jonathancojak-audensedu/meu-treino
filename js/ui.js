@@ -15,9 +15,17 @@ function mq(query){
 /* -------------------------------------------------------------------------
    18. FOLHAS, CONFIRMAÇÃO E TOAST
    ------------------------------------------------------------------------- */
+/* enquanto uma folha esta aberta, o resto do app fica inert: tira o fundo
+   da navegacao por Tab e da leitura por teclado virtual de leitor de tela,
+   sem precisar reimplementar focus trap na mao */
+function travarFundo(travar){
+  document.querySelectorAll('#app > *:not(.backdrop)').forEach(el => { el.inert = travar; });
+}
+
 function openBackdrop(el, onClose, skipFocus){
   el.classList.add('show');
-  backdropCloser = () => { el.classList.remove('show'); backdropCloser = null; if(onClose) onClose(); };
+  travarFundo(true);
+  backdropCloser = () => { el.classList.remove('show'); travarFundo(false); backdropCloser = null; if(onClose) onClose(); };
   el.onclick = e => { if(e.target === el) backdropCloser(); };
   if(!skipFocus){
     const focusable = el.querySelector('button, input, a');
@@ -45,7 +53,7 @@ function askConfirm(opts){
         '<button class="' + (opts.danger ? 'btn-danger' : 'btn-primary') + '" data-r="1">' + esc(opts.confirmLabel || 'Confirmar') + '</button>' +
       '</div>';
     let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); backdropCloser = null; resolve(v); };
+    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); travarFundo(false); backdropCloser = null; resolve(v); };
     openBackdrop(el, () => done(false));
     $('sheet-body').querySelectorAll('[data-r]').forEach(b => b.onclick = () => done(b.dataset.r === '1'));
   });
@@ -82,4 +90,4 @@ function summarizeSets(sets, type){
   return sets.slice(0, 4).map(s => fmtSet(s, type)).join(' · ');
 }
 
-export { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, unitOf, fmtRest, fmtSet, summarizeSets };
+export { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, travarFundo, unitOf, fmtRest, fmtSet, summarizeSets };

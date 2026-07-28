@@ -138,7 +138,7 @@ function desenharPergunta(){
 
   if(p.tipo === 'texto'){
     corpoHtml += '<input class="onb-input" id="onb-texto" type="text" autocomplete="given-name" ' +
-      'placeholder="' + esc(p.placeholder) + '" value="' + esc(onbDraft[p.id] || '') + '" maxlength="30">';
+      'placeholder="' + esc(p.placeholder) + '" value="' + esc(onbDraft[p.id] || '') + '" maxlength="30" aria-label="' + esc(p.titulo) + '">';
   }else{
     const sel = onbDraft[p.id];
     corpoHtml += '<div class="' + (p.grade ? 'onb-grid' : 'onb-opts') + '">' +
@@ -357,9 +357,9 @@ function abrirDadosCorporais(){
     '<p>Tudo opcional. Nada disso muda o treino que você recebe, serve para acompanhar sua evolução com o tempo. ' +
     'Fica salvo só no seu aparelho.</p>' +
     '<div class="onb-opts">' +
-      '<input class="onb-input" id="c-idade" type="number" inputmode="numeric" min="10" max="100" placeholder="Idade" value="' + esc(c.idade || '') + '">' +
-      '<input class="onb-input" id="c-altura" type="number" inputmode="numeric" min="100" max="250" placeholder="Altura em cm" value="' + esc(c.altura || '') + '">' +
-      '<input class="onb-input" id="c-peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="Peso em kg" value="' + esc(c.peso || '') + '">' +
+      '<input class="onb-input" id="c-idade" type="number" inputmode="numeric" min="10" max="100" placeholder="Idade" value="' + esc(c.idade || '') + '" aria-label="Idade">' +
+      '<input class="onb-input" id="c-altura" type="number" inputmode="numeric" min="100" max="250" placeholder="Altura em cm" value="' + esc(c.altura || '') + '" aria-label="Altura em centímetros">' +
+      '<input class="onb-input" id="c-peso" type="number" inputmode="decimal" step="0.1" min="30" max="300" placeholder="Peso em kg" value="' + esc(c.peso || '') + '" aria-label="Peso em quilos">' +
       '<div class="onb-opts" style="gap:8px">' +
         ['feminino','masculino','prefiro não dizer'].map(g =>
           '<button class="onb-opt' + (c.sexo === g ? ' sel' : '') + '" data-sexo="' + g + '"><span>' + g.charAt(0).toUpperCase() + g.slice(1) + '</span><span class="tick" aria-hidden="true">✓</span></button>').join('') +

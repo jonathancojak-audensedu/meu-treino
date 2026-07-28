@@ -6,7 +6,7 @@ import { EX, META } from './catalog.js';
 import { tempoEstimado } from './generator.js';
 import { Store } from './store.js';
 import {
-  $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser,
+  $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalidarBackdropCloser, travarFundo,
   unitOf, fmtRest, fmtSet, summarizeSets
 } from './ui.js';
 import { history, saveHistory, renderHistory, exerciciosComHistorico, editarDataTreino } from './history.js';
@@ -587,8 +587,8 @@ function abrirEdicaoInicio(){
     '<button class="closebtn" data-fechar="1" aria-label="Fechar">✕</button></div>' +
     '<p>Ajusta quando você começou de verdade, se esqueceu de tocar em Começar na hora.</p>' +
     '<div class="onb-opts">' +
-      '<input class="onb-input" id="ini-data" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataVal + '">' +
-      '<input class="onb-input" id="ini-hora" type="time" inputmode="numeric" value="' + horaVal + '">' +
+      '<input class="onb-input" id="ini-data" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataVal + '" aria-label="Data de início">' +
+      '<input class="onb-input" id="ini-hora" type="time" inputmode="numeric" value="' + horaVal + '" aria-label="Hora de início">' +
     '</div>' +
     '<div class="sheetact" style="margin-top:16px">' +
       '<button class="btn-ghost" data-fechar="1">Cancelar</button>' +
@@ -971,14 +971,18 @@ function pickExercise(title, suggested, replacing){
       '<div class="optlist" id="ex-options"></div>';
 
     const options = $('ex-options');
+    // .opt e um <div>, nunca um <button>: a estrela de favorito e um botao de
+    // verdade, e botao dentro de botao e invalido (some pra leitor de tela)
     const optRow = x => {
       const fav = !!favoritos[x.id];
-      return '<button class="opt" data-v="' + x.id + '">' +
-        '<span class="optmain">' + esc(x.def.name) +
-          '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span>' +
-        '</span>' +
-        '<span class="star' + (fav ? ' fav' : '') + '" data-star="' + x.id + '" role="button" aria-label="' + (fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos') + '">★</span>' +
-      '</button>';
+      return '<div class="opt">' +
+        '<button class="optselect" data-v="' + x.id + '">' +
+          '<span class="optmain">' + esc(x.def.name) +
+            '<span class="om">' + esc(x.def.group || '') + (x.def.type !== 'reps' ? ' · ' + (x.def.type === 'time' ? 'tempo' : x.def.type === 'cardio' ? 'cardio' : 'distância') : '') + '</span>' +
+          '</span>' +
+        '</button>' +
+        '<button class="star' + (fav ? ' fav' : '') + '" data-star="' + x.id + '" aria-pressed="' + (fav ? 'true' : 'false') + '" aria-label="' + (fav ? 'Remover dos favoritos' : 'Adicionar aos favoritos') + '">★</button>' +
+      '</div>';
     };
     const passaChip = x => !chipAtivo || (CHIP_GRUPOS[chipAtivo] || []).indexOf(x.def.group) !== -1;
 
@@ -1010,15 +1014,15 @@ function pickExercise(title, suggested, replacing){
       const hits = base.filter(x => !q || norm(x.def.name).includes(q) || norm(x.def.group || '').includes(q));
       hits.forEach(x => rows.push(optRow(x)));
       if(!hits.length && filter && filter.trim().length > 2){
-        rows.push('<button class="opt" data-new="' + esc(filter.trim()) + '">Criar "' + esc(filter.trim()) + '"' +
-          '<span class="om">exercício novo, fica salvo no seu catálogo</span></button>');
+        rows.push('<div class="opt"><button class="optselect" data-new="' + esc(filter.trim()) + '">Criar "' + esc(filter.trim()) + '"' +
+          '<span class="om">exercício novo, fica salvo no seu catálogo</span></button></div>');
       }
       options.innerHTML = rows.join('');
     }
     draw('');
 
     let settled = false;
-    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); invalidarBackdropCloser(); resolve(v || null); };
+    const done = v => { if(settled) return; settled = true; el.classList.remove('show'); travarFundo(false); invalidarBackdropCloser(); resolve(v || null); };
     openBackdrop(el, () => done(null), true);
 
     $('ex-search').oninput = ev => draw(ev.target.value);

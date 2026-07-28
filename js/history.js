@@ -81,11 +81,11 @@ async function editarDataTreino(id, aoSalvar){
     '<p>Ajusta quando esse treino começou e terminou de verdade. Serve pra registrar um treino que você esqueceu de iniciar ou fechar na hora. A duração é recalculada.</p>' +
     '<div class="onb-opts">' +
       '<div class="editlabel">Início</div>' +
-      '<input class="onb-input" id="ed-data-ini" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(inicio) + '">' +
-      '<input class="onb-input" id="ed-hora-ini" type="time" inputmode="numeric" value="' + horaDe(inicio) + '">' +
+      '<input class="onb-input" id="ed-data-ini" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(inicio) + '" aria-label="Data de início">' +
+      '<input class="onb-input" id="ed-hora-ini" type="time" inputmode="numeric" value="' + horaDe(inicio) + '" aria-label="Hora de início">' +
       '<div class="editlabel" style="margin-top:10px">Fim</div>' +
-      '<input class="onb-input" id="ed-data-fim" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(fim) + '">' +
-      '<input class="onb-input" id="ed-hora-fim" type="time" inputmode="numeric" value="' + horaDe(fim) + '">' +
+      '<input class="onb-input" id="ed-data-fim" type="date" inputmode="numeric" max="' + dataMax + '" value="' + dataDe(fim) + '" aria-label="Data de fim">' +
+      '<input class="onb-input" id="ed-hora-fim" type="time" inputmode="numeric" value="' + horaDe(fim) + '" aria-label="Hora de fim">' +
     '</div>' +
     '<div class="sheetact" style="margin-top:16px">' +
       '<button class="btn-ghost" data-fechar="1">Cancelar</button>' +

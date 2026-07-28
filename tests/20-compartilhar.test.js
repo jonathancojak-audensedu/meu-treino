@@ -120,7 +120,7 @@ async function marcarPrimeiraSerie($, w, uid, wVal, rVal){
   $3('daylist').querySelector('[data-free]').click();
   await wait(40);
   $3('ex-search').value = 'rosca'; ev($3('ex-search'), 'input'); await wait(10);
-  $3('ex-options').querySelector('.opt').click();
+  $3('ex-options').querySelector('.optselect').click();
   await wait(40);
   const termos = ['supino', 'agachamento', 'remada', 'triceps', 'panturrilha', 'abdominal', 'leg press', 'stiff', 'desenvolvimento'];
   for(const termo of termos){
@@ -128,7 +128,7 @@ async function marcarPrimeiraSerie($, w, uid, wVal, rVal){
     await wait(20);
     $3('ex-search').value = termo; ev($3('ex-search'), 'input');
     await wait(10);
-    const opt = $3('ex-options').querySelector('.opt');
+    const opt = $3('ex-options').querySelector('.optselect');
     if(opt) opt.click();
     await wait(20);
   }

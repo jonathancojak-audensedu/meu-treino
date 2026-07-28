@@ -51,7 +51,7 @@ const HISTORICO = [
   check('chips aparecem no topo', $('ex-chips').querySelectorAll('[data-chip]').length === 8);
   $('ex-chips').querySelector('[data-chip="pernas"]').click();
   await wait(20);
-  const gruposMostrados = [...$('ex-options').querySelectorAll('.opt[data-v] .om')]
+  const gruposMostrados = [...$('ex-options').querySelectorAll('.optselect[data-v] .om')]
     .map(el => el.textContent.split(' · ')[0]);
   check('chip "Pernas" so mostra quadriceps/panturrilha', gruposMostrados.length > 0 && gruposMostrados.every(g => g === 'quadríceps' || g === 'panturrilha'));
   check('chip fica marcado como selecionado', $('ex-chips').querySelector('[data-chip="pernas"]').classList.contains('sel'));
@@ -79,7 +79,7 @@ const HISTORICO = [
   check('desfavoritar remove do estado', !MT.favoritos['agachamento_sumo']);
 
   console.log('\n== dois toques: recente aparece direto e escolhe o exercicio ==');
-  const recente = $('ex-options').querySelector('.opt[data-v="agachamento_sumo"]');
+  const recente = $('ex-options').querySelector('.optselect[data-v="agachamento_sumo"]');
   check('exercicio recente clicavel sem digitar nada', !!recente);
   recente.click();
   await wait(30);
