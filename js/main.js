@@ -397,6 +397,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v37', itens: [
+    'Prescrição de série escrita por extenso ("4 séries de 6 a 8 repetições"), sem número solto que confundia com quantidade de séries'
+  ]},
   {versao: 'meu-treino-v35', itens: [
     'Corrige o app pausando a música ou o podcast de outro app durante o descanso'
   ]},

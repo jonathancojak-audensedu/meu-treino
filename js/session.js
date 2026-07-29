@@ -230,6 +230,43 @@ function formatarSugestao(sug){
   return 'sugestão: manter ' + fmt(sug.cargaSugerida) + ' kg e buscar mais repetições';
 }
 
+/* prescrição por extenso: "4 séries de 6 a 8 repetições", nunca um número
+   solto ambíguo tipo "RPE 7-8" que a pessoa possa confundir com séries.
+   RIR vira "deixando X a Y repetições na reserva", que é o mesmo dado só
+   que em linguagem comum. RPE continua visível, mas só como detalhe
+   secundário (span apagado) pra quem já conhece a escala. */
+function fmtFaixaUnidade(bruto, singular, plural){
+  const faixa = parseFaixaReps(bruto);
+  if(!faixa) return esc(bruto);
+  if(faixa.piso === faixa.topo) return faixa.piso + ' ' + (faixa.piso === 1 ? singular : plural);
+  return faixa.piso + ' a ' + faixa.topo + ' ' + plural;
+}
+function fmtFaixaPrescricao(reps, type){
+  if(type === 'reps') return fmtFaixaUnidade(reps, 'repetição', 'repetições');
+  if(type === 'time') return fmtFaixaUnidade(reps, 'segundo', 'segundos');
+  if(type === 'dist') return fmtFaixaUnidade(reps, 'metro', 'metros');
+  return esc(reps);
+}
+function fmtReserva(rir){
+  const faixa = parseFaixaReps(rir);
+  if(!faixa) return '';
+  if(faixa.piso === faixa.topo) return 'deixando ' + faixa.piso + (faixa.piso === 1 ? ' repetição' : ' repetições') + ' na reserva';
+  return 'deixando ' + faixa.piso + ' a ' + faixa.topo + ' repetições na reserva';
+}
+function fmtPrescricao(item, def, comSeries){
+  const faixa = fmtFaixaPrescricao(item.reps, def.type);
+  const base = comSeries ? (item.sets + (item.sets === 1 ? ' série de ' : ' séries de ') + faixa) : faixa;
+  const reserva = fmtReserva(item.rir);
+  const partes = [base + (reserva ? ', ' + reserva : '')];
+  if(item.rpe) partes.push('<span class="rpe-detalhe">RPE ' + esc(item.rpe) + '</span>');
+  return partes.join(' · ');
+}
+function fmtPrescricaoEditor(item){
+  const reserva = fmtReserva(item.rir);
+  const rpe = item.rpe ? '<span class="rpe-detalhe">RPE ' + esc(item.rpe) + '</span>' : '';
+  return [reserva, rpe].filter(Boolean).join(' · ');
+}
+
 /* -------------------------------------------------------------------------
    10. PRÉVIA
    ------------------------------------------------------------------------- */
@@ -255,7 +292,7 @@ function openPreview(key){
       '<div class="exhead" style="cursor:default">' +
         '<span class="exmain"><span class="idx">Exercício ' + (i+1) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
-        '<span class="target">' + it.sets + ' séries · ' + esc(it.reps) + ' · RPE ' + it.rpe + ' · descanso ' + fmtRest(it.rest) + '</span>' +
+        '<span class="target">' + fmtPrescricao(it, def, true) + ' · descanso ' + fmtRest(it.rest) + '</span>' +
         (last ? '<span class="exsummary">última vez: ' + summarizeSets(last.sets, def.type) + '</span>' : '') +
         (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
         '</span>' +
@@ -319,7 +356,7 @@ function editCardHTML(item, pos, total){
       '<span class="exmain">' +
         '<span class="idx">Exercício ' + (pos+1) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
-        '<span class="target">RPE ' + item.rpe + ' · RIR ' + item.rir + '</span>' +
+        '<span class="target">' + fmtPrescricaoEditor(item) + '</span>' +
       '</span>' +
     '</div>' +
     '<div class="exbody">' +
@@ -579,7 +616,7 @@ function cardHTML(item, pos){
       '<span class="exmain">' +
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
-        '<span class="target">' + esc(item.reps) + ' · RPE ' + item.rpe + ' · RIR ' + item.rir + ' · ' + fmtRest(item.rest) + '</span>' +
+        '<span class="target">' + fmtPrescricao(item, def, false) + ' · ' + fmtRest(item.rest) + '</span>' +
         (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
         (allDone && summary ? '<span class="exsummary">' + summary + '</span>' : '') +
       '</span>' +
