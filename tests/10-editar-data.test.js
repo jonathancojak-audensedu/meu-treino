@@ -85,8 +85,13 @@ const HISTORICO = [
   check('nao gravou com fim antes do inicio', JSON.stringify(w.MT.history) === antesDoSalvar);
 
   console.log('\n== duracao acima de 5 horas pede confirmacao ==');
-  $('ed-data-ini').value = hoje; $('ed-hora-ini').value = '01:00';
-  $('ed-data-fim').value = hoje; $('ed-hora-fim').value = '08:00'; // 7 horas
+  // horarios calculados a partir de agora (nunca fixos), senao o teste falha
+  // se rodar de madrugada: "hoje as 08:00" pode cair no futuro e a validacao
+  // de fim futuro barra o salvamento antes de chegar na checagem de duracao
+  const fimLongo = new Date(Date.now() - 60000);
+  const inicioLongo = new Date(fimLongo.getTime() - 7 * 3600000);
+  $('ed-data-ini').value = dataDe(inicioLongo); $('ed-hora-ini').value = horaDe(inicioLongo);
+  $('ed-data-fim').value = dataDe(fimLongo); $('ed-hora-fim').value = horaDe(fimLongo);
   $('ed-salvar').click();
   await wait(30);
   check('abre confirmacao de duracao longa', $('sheet-body').textContent.includes('mais de 5 horas'));

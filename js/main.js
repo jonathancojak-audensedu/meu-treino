@@ -302,17 +302,14 @@ async function importBackup(file){
 function estaInstalado(){
   return mq('(display-mode: standalone)') || window.navigator.standalone === true;
 }
-function ehIOS(){
-  return /iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
 
-async function avisarPrazoIOSSeNecessario(){
-  if(!ehIOS() || estaInstalado() || !history.length || settings.avisoIOSMostrado) return false;
-  settings.avisoIOSMostrado = true;
+async function avisarInstalacaoSeNecessario(){
+  if(estaInstalado() || !history.length || settings.avisoInstalacaoMostrado) return false;
+  settings.avisoInstalacaoMostrado = true;
   await Store.set('settings', settings);
   await askConfirm({
     title: 'Instale pra não perder o histórico',
-    text: 'No iPhone, o Safari pode apagar dados de sites não instalados depois de alguns dias sem uso. Toque em Compartilhar e "Adicionar à Tela de Início" pra guardar seus treinos de verdade.',
+    text: 'No iPhone, o Safari pode apagar os dados de sites não instalados depois de 7 dias sem uso. Instalar na tela de início evita isso, tanto no iPhone quanto no Android. No iPhone: toque em Compartilhar e depois em "Adicionar à Tela de Início". No Android: toque no menu do Chrome (⋮) e depois em "Adicionar à tela inicial" ou "Instalar app".',
     confirmLabel: 'Entendi', hideCancel: true
   });
   return true;
@@ -322,13 +319,12 @@ async function lembrarBackupSeNecessario(){
   if(!history.length) return;
   const lembrete = settings.backupLembrete || null;
   const treinosDesde = history.length - (lembrete ? lembrete.treinos : 0);
-  const diasDesde = lembrete ? (Date.now() - new Date(lembrete.quando).getTime()) / 86400000 : 0;
-  if(treinosDesde < 15 && diasDesde < 30) return;
-  settings.backupLembrete = {quando: new Date().toISOString(), treinos: history.length};
+  if(treinosDesde < 10) return;
+  settings.backupLembrete = {treinos: history.length};
   await Store.set('settings', settings);
   const ok = await askConfirm({
     title: 'Fazer backup do seu histórico?',
-    text: 'Seus dados ficam só neste aparelho, sem conta nem nuvem. Exportar de vez em quando evita perder tudo se você trocar de celular ou limpar o navegador.',
+    text: 'Seus dados ficam só neste aparelho: não existe conta nem servidor guardando isso por você. Exportar de vez em quando evita perder tudo se você trocar de celular ou limpar o navegador.',
     confirmLabel: 'Exportar agora'
   });
   if(ok) exportBackup();
@@ -336,8 +332,8 @@ async function lembrarBackupSeNecessario(){
 
 async function avisosDeProtecaoDeDados(){
   if(!profile || !history.length) return;
-  const mostrouAvisoIOS = await avisarPrazoIOSSeNecessario();
-  if(mostrouAvisoIOS) return;
+  const mostrouAvisoInstalacao = await avisarInstalacaoSeNecessario();
+  if(mostrouAvisoInstalacao) return;
   await lembrarBackupSeNecessario();
 }
 
@@ -397,6 +393,10 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v39', itens: [
+    'Aviso de instalação agora vale pra Android também, não só iPhone, com o passo a passo dos dois',
+    'Lembrete de backup passa a aparecer a cada 10 treinos'
+  ]},
   {versao: 'meu-treino-v38', itens: [
     'Volume da prévia não mostra mais "0 kg" antes de começar o treino, e exercícios sem histórico ganham uma dica de primeira vez'
   ]},
