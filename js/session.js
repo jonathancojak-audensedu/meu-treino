@@ -280,7 +280,7 @@ function openPreview(key){
   $('sess-warmup').style.display = 'block';
   $('sess-warmup').innerHTML = '<b>Aquecimento e ativação</b>' + esc(w.warmup);
   $('sess-timer').textContent = '--:--';
-  $('sess-volume').textContent = '0 kg';
+  $('sess-volume').textContent = '--';
   $('sess-sets').textContent = items.reduce((a, e) => a + e.sets, 0) + ' previstas';
 
   $('exlist').innerHTML = items.map((it, i) => {
@@ -294,7 +294,7 @@ function openPreview(key){
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + fmtPrescricao(it, def, true) + ' · descanso ' + fmtRest(it.rest) + '</span>' +
         (last ? '<span class="exsummary">última vez: ' + summarizeSets(last.sets, def.type) + '</span>' : '') +
-        (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
+        (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
         '</span>' +
       '</div>' +
       '<div class="exfoot">' +
@@ -330,7 +330,7 @@ function openEdit(key){
   $('sess-name').textContent = w.name;
   $('sess-sub').textContent = w.tag + ' · ' + w.meta;
   $('sess-warmup').style.display = 'none';
-  $('sess-volume').textContent = '0 kg';
+  $('sess-volume').textContent = '--';
   $('startbar').style.display = 'none';
   $('finishbar').style.display = 'none';
   $('editbar').style.display = 'flex';
@@ -617,7 +617,7 @@ function cardHTML(item, pos){
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + fmtPrescricao(item, def, false) + ' · ' + fmtRest(item.rest) + '</span>' +
-        (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '') +
+        (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
         (allDone && summary ? '<span class="exsummary">' + summary + '</span>' : '') +
       '</span>' +
       '<span class="prog">' + doneCount + '/' + item.sets + '</span>' +
