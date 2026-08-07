@@ -162,7 +162,10 @@ const todoJs = fs.readdirSync(jsDir)
   const prog = w2.MT.program;
   check('programa tem 4 dias, como respondido', prog.length === 4);
   check('deixou de ser o Upper Lower fixo', !prog.some(d => d.name === 'Upper A'));
-  check('divisao superiores e inferiores para 4 dias', prog[0].name.indexOf('Superiores') === 0);
+  // esta pessoa priorizou braços, então a divisão vira Push/Pull/Legs com um
+  // dia dedicado, que sustenta o foco melhor que Superiores/Inferiores
+  check('foco em braços rende um dia dedicado de braços', prog.some(d => d.name === 'Braços e antebraço'));
+  check('os outros dias viram Push/Pull/Legs', ['Empurrar','Puxar','Pernas'].every(n => prog.some(d => d.name === n)));
   const todos = prog.reduce((a,d) => a.concat(d.items.map(i => i.ex)), []);
   const EQ = w2.MT.EQUIP.simples;
   check('respeita academia simples', todos.every(id => w2.MT.META[id].e.every(e => EQ.indexOf(e) !== -1)));

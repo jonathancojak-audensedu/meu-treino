@@ -91,7 +91,7 @@ const DORES = [[], ['ombro'], ['joelho'], ['lombar']];
   const usados = Object.keys(contagem);
   const nuncaUsados = exIds.filter(id => !contagem[id]);
   console.log('  ' + usados.length + ' de ' + exIds.length + ' exercicios distintos escolhidos pelo menos uma vez');
-  check('nunca escolhidos nao regride (baseline pos-correcao: 61 de 156)', nuncaUsados.length <= 61);
+  check('nunca escolhidos nao regride (baseline pos-foco-muscular: 27 de 158)', nuncaUsados.length <= 27);
 
   console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
   process.exit(check.fails ? 1 : 0);

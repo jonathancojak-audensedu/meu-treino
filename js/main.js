@@ -393,6 +393,11 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v40', itens: [
+    'Priorizar um grupo muscular agora muda o treino de verdade: focar em braços rende uma divisão com dia dedicado',
+    'Pegada, punho e trapézio finalmente aparecem nos treinos gerados',
+    'Muito mais variedade de exercícios: o gerador deixou de repetir sempre os mesmos'
+  ]},
   {versao: 'meu-treino-v39', itens: [
     'Aviso de instalação agora vale pra Android também, não só iPhone, com o passo a passo dos dois',
     'Lembrete de backup passa a aparecer a cada 10 treinos'
