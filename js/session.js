@@ -626,15 +626,21 @@ function cardHTML(item, pos){
     '<div class="exbody">' +
       '<div class="setrow-head"><div></div><div>' + (def.type === 'cardio' ? 'Dist.' : 'Carga') + '</div><div>' + (def.type === 'reps' ? 'Reps' : def.type === 'time' ? 'Tempo' : def.type === 'cardio' ? 'Duração' : 'Dist.') + '</div><div></div><div></div></div>' +
       rows +
+      /* ações leves e reversíveis na primeira linha; excluir o exercício
+         inteiro fica isolado embaixo, com rótulo que diz o que sai, pra não
+         ser confundido com "− série" como aconteceu com um testador */
       '<div class="exfoot">' +
         '<button class="minibtn" data-addset="' + item.uid + '">+ série</button>' +
-        (item.sets > 1 ? '<button class="minibtn" data-delset="' + item.uid + '">- série</button>' : '') +
+        (item.sets > 1 ? '<button class="minibtn" data-delset="' + item.uid + '">− série</button>' : '') +
         '<button class="minibtn" data-swap="' + item.uid + '">trocar</button>' +
         (pos > 0 ? '<button class="minibtn" data-move="' + item.uid + '|-1" aria-label="Mover para cima">↑</button>' : '') +
         (!isLast ? '<button class="minibtn" data-move="' + item.uid + '|1" aria-label="Mover para baixo">↓</button>' : '') +
-        '<button class="minibtn danger" data-remove="' + item.uid + '">excluir</button>' +
         execLinkHTML(item.ex, def, 'execução') +
         (def.note ? '<button class="minibtn" data-note="' + item.uid + '">observações</button>' : '') +
+      '</div>' +
+      '<div class="exfoot perigo">' +
+        '<button class="minibtn danger" data-remove="' + item.uid + '" ' +
+          'aria-label="Excluir o exercício ' + esc(def.name) + ' inteiro deste treino">excluir exercício</button>' +
       '</div>' +
       (def.note ? '<div class="noteblock" id="note-' + item.uid + '">' + esc(def.note) + '</div>' : '') +
     '</div></div></div>';
@@ -996,15 +1002,32 @@ function moveItem(uid, delta){
   if(card && card.scrollIntoView) card.scrollIntoView({behavior:'auto', block:'center'});
 }
 
-function removeItem(uid, silent){
+/* Excluir o exercício inteiro é a ação cara desta tela: leva junto todas as
+   séries já registradas. Um testador apagou um exercício achando que tirava
+   só uma série, então aqui sempre passa por confirmação, e a confirmação diz
+   quantas séries se perdem. Tirar série (delSet) continua leve e sem
+   pergunta, porque o log fica guardado e "+ série" traz tudo de volta. */
+async function removeItem(uid){
   const pos = posOf(uid);
   if(pos === -1) return;
-  lastRemoved = {item: session.items[pos], log: session.log[uid], pos: pos};
-  session.items.splice(pos, 1);
+  const item = session.items[pos];
+  const feitas = (session.log[uid] || []).slice(0, item.sets).filter(s => s.done).length;
+  const ok = await askConfirm({
+    title: 'Excluir ' + defOf(item.ex).name + '?',
+    text: (feitas
+      ? 'Você já registrou ' + feitas + (feitas === 1 ? ' série' : ' séries') + ' neste exercício, e elas saem junto. '
+      : 'O exercício sai deste treino. ') +
+      'Dá pra desfazer logo depois, pelo aviso que aparece na base da tela.',
+    confirmLabel: 'Excluir exercício',
+    danger: true
+  });
+  if(!ok || posOf(uid) === -1) return;
+  lastRemoved = {item: item, log: session.log[uid], pos: pos};
+  session.items.splice(posOf(uid), 1);
   delete session.log[uid];
   renderSession();
   saveSession();
-  if(!silent) toast('Exercício removido', 'Desfazer', undoRemove);
+  toast('Exercício removido', 'Desfazer', undoRemove);
 }
 function undoRemove(){
   if(!lastRemoved || !session) return;

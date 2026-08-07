@@ -117,7 +117,12 @@ const check = criarCheck();
   console.log('\n== item 3: excluir exercicio e desfazer ==');
   const antes = $('exlist').querySelectorAll('.excard[data-uid]').length;
   $('card-' + uids[3]).querySelector('[data-remove]').click();
-  await wait(20);
+  await wait(30);
+  // excluir exercicio inteiro passa por confirmacao desde que um testador
+  // apagou um exercicio achando que tirava so uma serie
+  check('pede confirmacao antes de excluir', $('sheet-backdrop').classList.contains('show'));
+  $('sheet-body').querySelector('[data-r="1"]').click();
+  await wait(30);
   check('exercicio removido', $('exlist').querySelectorAll('.excard[data-uid]').length === antes - 1);
   check('toast oferece desfazer', $('toast').textContent.includes('Desfazer'));
   $('toast-act').click();

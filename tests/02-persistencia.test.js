@@ -60,6 +60,12 @@ const check = criarCheck();
   check('card marcado para exclusao ao arrastar', alvo.classList.contains('willdelete'));
   $('exlist').dispatchEvent(mk('touchend', 170, 404, head));
   await wait(30);
+  // o gesto tambem passa pela confirmacao: e o mesmo caminho de exclusao
+  check('gesto tambem pede confirmacao', $('sheet-backdrop').classList.contains('show'));
+  check('card volta ao lugar enquanto a confirmacao esta aberta',
+    !alvo.classList.contains('willdelete') && !alvo.querySelector('.cardinner').style.transform);
+  $('sheet-body').querySelector('[data-r="1"]').click();
+  await wait(30);
   check('exercicio excluido pelo gesto', $('exlist').querySelectorAll('.excard[data-uid]').length === total - 1);
   check('nao existe mais o card arrastado', !$('card-' + alvoUid));
   check('toast de desfazer aparece', $('toast').textContent.includes('Desfazer'));

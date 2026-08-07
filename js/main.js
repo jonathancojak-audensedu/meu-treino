@@ -393,6 +393,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v41', itens: [
+    'Excluir um exercício agora fica separado de tirar uma série, e pergunta antes de apagar'
+  ]},
   {versao: 'meu-treino-v40', itens: [
     'Priorizar um grupo muscular agora muda o treino de verdade: focar em braços rende uma divisão com dia dedicado',
     'Pegada, punho e trapézio finalmente aparecem nos treinos gerados',
@@ -578,8 +581,13 @@ $('exlist').addEventListener('touchend', () => {
   if(swipe.active) suppressClickUntil = Date.now() + 400;
   const inner = swipe.card.querySelector('.cardinner');
   if(swipe.active && swipe.dx < -100){
-    if(editState) editRemoveItem(swipe.card.dataset.uid);
-    else removeItem(swipe.card.dataset.uid);
+    const uid = swipe.card.dataset.uid;
+    // devolve o card ao lugar antes de perguntar: excluir exercício agora
+    // pede confirmação, e recusar não pode deixar o card preso deslocado
+    if(inner) inner.style.transform = '';
+    swipe.card.classList.remove('willdelete');
+    if(editState) editRemoveItem(uid);
+    else removeItem(uid);
   }else if(inner){
     inner.style.transform = '';
     swipe.card.classList.remove('willdelete');
