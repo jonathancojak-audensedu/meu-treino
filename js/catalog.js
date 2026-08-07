@@ -112,6 +112,7 @@ const EX = {
   rosca_scott_unilateral:  {name:'Rosca Scott unilateral', type:'reps', group:'bíceps', img:true},
   rosca_barra_w:           {name:'Rosca com barra W', type:'reps', group:'bíceps', img:true},
   rosca_zottman:           {name:'Rosca Zottman', type:'reps', group:'bíceps', img:true},
+  rosca_maquina_unilateral: {name:'Rosca bíceps unilateral na máquina', type:'reps', group:'bíceps', note:'Um braço de cada vez, apoiado. Bom pra corrigir diferença de força entre os lados.', alts:['rosca_scott_unilateral']},
   triceps_frances:         {name:'Tríceps francês', type:'reps', group:'tríceps', img:true},
   triceps_banco:           {name:'Tríceps no banco', type:'reps', group:'tríceps', img:true},
   triceps_unilateral:      {name:'Tríceps unilateral na polia', type:'reps', group:'tríceps', img:true},
@@ -131,6 +132,7 @@ const EX = {
   hack_unilateral:         {name:'Hack machine unilateral', type:'reps', group:'quadríceps', img:true},
   extensora_unilateral:    {name:'Cadeira extensora unilateral', type:'reps', group:'quadríceps', img:true},
   flexora_unilateral:      {name:'Cadeira flexora unilateral', type:'reps', group:'posterior', img:true},
+  mesa_flexora:            {name:'Mesa flexora (deitado)', type:'reps', group:'posterior', note:'Deitado de bruços. Pega o posterior num ângulo diferente da cadeira flexora, que é sentado.', alts:['flexora']},
   rdl_unilateral:          {name:'Levantamento terra romeno unilateral', type:'reps', group:'posterior', img:true},
   hip_thrust_unilateral:   {name:'Hip thrust unilateral', type:'reps', group:'posterior'},
   ponte_gluteo_unilateral: {name:'Ponte de glúteo unilateral', type:'reps', group:'posterior', img:true},
@@ -290,6 +292,7 @@ const META = {
   rosca_scott_unilateral:  {p:'biceps', m:{biceps:1}, e:['halter','banco'], s:['cotovelo'], c:1, u:true},
   rosca_barra_w:           {p:'biceps', m:{biceps:1}, e:['barra'], s:['punho','cotovelo'], c:1},
   rosca_zottman:           {p:'biceps', m:{biceps:1}, e:['halter'], s:['punho','cotovelo'], c:2},
+  rosca_maquina_unilateral: {p:'biceps', m:{biceps:1}, e:['maquina'], s:['cotovelo'], c:1, u:true},
   triceps_frances:         {p:'triceps', m:{triceps:1}, e:['halter'], s:['cotovelo','ombro'], c:2},
   triceps_banco:           {p:'triceps', m:{triceps:1, peito:.3}, e:['corpo','banco'], s:['ombro','punho'], c:1},
   triceps_unilateral:      {p:'triceps', m:{triceps:1}, e:['polia'], s:['cotovelo'], c:1, u:true},
@@ -309,6 +312,7 @@ const META = {
   hack_unilateral:         {p:'joelho', m:{quadriceps:1, gluteos:.5}, e:['maquina'], s:['joelho'], c:2, u:true},
   extensora_unilateral:    {p:'joelho', m:{quadriceps:1}, e:['maquina'], s:['joelho'], c:1, u:true},
   flexora_unilateral:      {p:'quadril', m:{posterior:1}, e:['maquina'], s:['joelho'], c:1, u:true},
+  mesa_flexora:            {p:'quadril', m:{posterior:1}, e:['maquina'], s:['joelho'], c:1},
   rdl_unilateral:          {p:'quadril', m:{posterior:1, gluteos:1}, e:['halter'], s:['lombar','joelho'], c:3, u:true},
   hip_thrust_unilateral:   {p:'quadril', m:{gluteos:1, posterior:.5}, e:['halter'], s:['joelho'], c:2, u:true},
   ponte_gluteo_unilateral: {p:'quadril', m:{gluteos:1, posterior:.5}, e:['corpo'], s:[], c:1, u:true},
@@ -361,7 +365,8 @@ const META = {
  'rosca_martelo_unilateral','rosca_scott_unilateral','rosca_barra_w','rosca_zottman',
  'triceps_frances','triceps_unilateral','triceps_corda_unilateral','triceps_frances_unilateral',
  'triceps_testa_unilateral','panturrilha_leg_press','panturrilha_unilateral_corpo','panturrilha_smith',
- 'panturrilha_burro','hiperextensao_banco','farmer_unilateral'
+ 'panturrilha_burro','hiperextensao_banco','farmer_unilateral',
+ 'mesa_flexora','rosca_maquina_unilateral'
 ].forEach(id => { if(META[id]) META[id].iso = true; });
 
 /* qualidade do equipamento, para não preferir elástico onde existe barra */
