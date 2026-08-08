@@ -407,11 +407,22 @@ function atualizarCabecalhoHome(){
      aqui deixaria "Bom dia, Jonathan" duas vezes na mesma dobra */
   sub.textContent = (ROTULOS.objetivo[profile.objetivo] || '') + ' · ' + profile.dias + 'x por semana';
 
-  const d = Number(profile.dias);
-  if(d >= 6) nota.textContent = 'Com 6 dias você fecha o ciclo inteiro na semana. Se acordar quebrado, trocar um dia por descanso rende mais que insistir.';
-  else if(d === 5) nota.textContent = 'Com 5 dias, pule o Upper C ou o Lower C. Priorize manter o Lower B, que é o dia de cadeia posterior.';
-  else if(d === 4) nota.textContent = 'Com 4 dias, faça Upper A, Lower A, Upper B e Lower B. Os treinos C ficam como variação para quando sobrar tempo.';
-  else nota.textContent = 'Com ' + d + ' dias, alterne entre os treinos na ordem em que aparecem, sem se preocupar em fechar a semana toda. O programa sob medida para essa frequência chega nos próximos passos.';
+  nota.textContent = notaDeFrequencia(Number(profile.dias), PROGRAM.length);
+}
+
+/* A nota falava em "Upper A" e "treinos C", nomes do programa padrão antigo.
+   Quem gera o programa pelo onboarding recebe "Superiores A" e pode nem ter
+   um treino C, então a dica citava treino que não existe na tela. Agora sai
+   da relação entre os dias disponíveis e o tamanho real do programa, sem
+   citar nome de treino nenhum. */
+function notaDeFrequencia(dias, totalDeTreinos){
+  const d = Number(dias) || 0;
+  const t = Number(totalDeTreinos) || 0;
+  if(!d || !t) return '';
+  if(d >= t) return 'Seus ' + t + ' treinos cabem na semana inteira. Se acordar quebrado, trocar um dia por descanso rende mais que insistir.';
+  const sobram = t - d;
+  return 'Com ' + d + (d === 1 ? ' dia' : ' dias') + ' por semana e ' + t + ' treinos no programa, ' +
+    sobram + (sobram === 1 ? ' fica' : ' ficam') + ' pra semana seguinte. Siga a ordem da lista e retome de onde parou, sem tentar compensar o que passou.';
 }
 
 /* -------------------------------------------------------------------------
@@ -597,6 +608,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v49', itens: [
+    'Corrige a aba Treinos sem responder ao toque logo depois de uma atualização'
+  ]},
   {versao: 'meu-treino-v48', itens: [
     'A navegação de baixo agora tem quatro abas: Início, Treinos, Histórico e Ajustes',
     'Os dias do programa ganharam tela própria na aba Treinos'
@@ -1115,7 +1129,7 @@ window.MT = {
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
   metricasDaHome: metricasDaHome, graficoDaHome: graficoDaHome, metricaSugerida: metricaSugerida,
-  FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS, descricaoDoDia: descricaoDoDia,
+  FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS, descricaoDoDia: descricaoDoDia, notaDeFrequencia: notaDeFrequencia,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers

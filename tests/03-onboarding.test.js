@@ -111,7 +111,11 @@ const todoJs = fs.readdirSync(jsDir)
   // a saudacao com o nome virou o titulo do painel; o sub ficou so com objetivo e frequencia
   check('home fala com a pessoa', /Jonathan/.test($('home-saudacao').textContent));
   check('home cita a frequencia', $('home-sub').textContent.includes('4x por semana'));
-  check('nota da home adaptada aos 4 dias', $('home-nota').textContent.includes('Upper A, Lower A'));
+  // a nota nao cita mais nome de treino: com programa gerado eles se chamam
+  // "Superiores A", e um programa de 4 dias pode nem ter treino C
+  // com 4 dias o gerador monta 4 treinos, entao a semana fecha o ciclo inteiro
+  check('nota da home adaptada ao programa gerado', /4 treinos cabem na semana/.test($('home-nota').textContent));
+  check('nota nao cita treino que pode nao existir', !/Upper |Lower |treinos C/.test($('home-nota').textContent));
   check('ajustes resume o perfil', $('perfil-resumo').textContent.includes('Massa muscular'));
   check('ajustes cita a limitacao', $('perfil-resumo').textContent.includes('ombro'));
 

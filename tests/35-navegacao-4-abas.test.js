@@ -88,6 +88,24 @@ const PERFIL = {nome:'Ana', objetivo:'hipertrofia', dias:3, local:'casa', tempo:
   check('um exercício só fica no singular', MT.descricaoDoDia({meta:'peito · 3 exercícios'}, 1) === 'peito · 1 exercício');
   check('meta vazio não deixa um separador solto', MT.descricaoDoDia({meta:''}, 5) === '5 exercícios');
 
+  console.log('\n== a nota da tela de treinos não cita treino que pode não existir ==');
+  const nota = MT.notaDeFrequencia;
+  check('citava "Upper A" e agora não cita mais nome de treino', !/Upper|Lower|treinos C/.test(nota(4, 6)));
+  check('quando os treinos cabem na semana, diz isso', /cabem na semana/.test(nota(6, 6)));
+  check('quando sobram treinos, diz quantos ficam pra depois', /2 ficam pra semana seguinte/.test(nota(4, 6)));
+  check('um treino sobrando fica no singular', /1 fica pra semana seguinte/.test(nota(5, 6)));
+  check('um dia por semana no singular', /1 dia por semana/.test(nota(1, 6)));
+  check('mais dias que treinos também fecha o ciclo', /cabem na semana/.test(nota(6, 4)));
+  check('sem perfil ou sem programa, a nota some em vez de mentir', nota(0, 6) === '' && nota(4, 0) === '');
+
+  console.log('\n== o service worker serve html e js do mesmo cache, pra não desencontrar ==');
+  const fs = require('fs');
+  const sw = fs.readFileSync(__dirname + '/../sw.js', 'utf8');
+  const blocoNavegacao = sw.slice(sw.indexOf("req.mode === 'navigate'"), sw.indexOf('demais arquivos'));
+  check('navegação lê do cache antes da rede', blocoNavegacao.indexOf("caches.match('./index.html')") < blocoNavegacao.indexOf('fetch(req)'));
+  check('e continua revalidando em segundo plano', /caches\.open\(VERSION\)/.test(blocoNavegacao));
+  check('o index.html está no SHELL, senão o cache-primeiro não teria o que servir', /'\.\/index\.html'/.test(sw.slice(0, sw.indexOf('addEventListener'))));
+
   console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
   process.exit(check.fails ? 1 : 0);
 })();

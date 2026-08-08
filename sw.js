@@ -3,7 +3,7 @@
    js/ ou css/, ou o manifest. Se um arquivo novo entrar em js/ ou css/ e
    ficar de fora do SHELL, o service worker nao instala e o offline quebra.
    Caminhos relativos para funcionar em subpasta do GitHub Pages. */
-const VERSION = 'meu-treino-v48';
+const VERSION = 'meu-treino-v49';
 
 const SHELL = [
   './',
@@ -55,14 +55,24 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // navegacao: rede primeiro para pegar atualizacoes, cache como plano B offline
+  /* Navegacao sai do MESMO cache que os modulos js, e nao da rede.
+     Servir o html pela rede parecia melhor (atualiza mais rapido), mas
+     misturava html novo com js do cache antigo por uma carga inteira: o
+     html trazia um botao que o js daquela versao ainda nao sabia atender,
+     e a tela abria quebrada. Vindo os dois do cache VERSION, eles nunca se
+     desencontram. A versao nova entra quando o service worker novo ativa,
+     e o app recarrega sozinho nesse momento (ver registrarServiceWorker
+     em js/main.js). */
   if(req.mode === 'navigate'){
     event.respondWith(
-      fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(VERSION).then(c => c.put('./index.html', copy));
-        return res;
-      }).catch(() => caches.match('./index.html'))
+      caches.match('./index.html').then(cached => {
+        const network = fetch(req).then(res => {
+          const copy = res.clone();
+          caches.open(VERSION).then(c => c.put('./index.html', copy));
+          return res;
+        }).catch(() => cached);
+        return cached || network;
+      })
     );
     return;
   }
