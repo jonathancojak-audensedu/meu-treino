@@ -134,6 +134,90 @@ async function deleteHistory(id){
 }
 
 /* -------------------------------------------------------------------------
+   16a. MÉTRICAS DA HOME
+   Função pura: entra o histórico, o perfil e a hora de agora, sai o painel
+   pronto. Não lê estado global nem toca em tela, então dá pra testar cada
+   regra (inclusive virada de semana e histórico vazio) sem abrir o app.
+   ------------------------------------------------------------------------- */
+const SEMANA_MS = 7 * 86400000;
+
+/* segunda-feira como início, que é o mesmo corte que a home já usava */
+function inicioDaSemana(data){
+  const d = new Date(data);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+/* 0 = semana atual, 1 = semana passada, e assim por diante */
+function semanasAtras(data, agora){
+  return Math.round((inicioDaSemana(agora) - inicioDaSemana(data)) / SEMANA_MS);
+}
+
+/* Semanas seguidas com pelo menos um treino. A semana atual é de graça: só
+   quebra depois de uma semana inteira em branco, senão toda segunda de manhã
+   a pessoa perderia a sequência que levou meses construindo. */
+function sequenciaDeSemanas(lista, agora){
+  const comTreino = new Set((lista || []).map(h => semanasAtras(new Date(h.date), agora)));
+  let k = comTreino.has(0) ? 0 : 1;
+  let seq = 0;
+  while(comTreino.has(k)){ seq++; k++; }
+  return seq;
+}
+
+/* Conta os recordes de carga numa passada só, do treino mais antigo pro mais
+   novo, guardando o melhor de cada exercício pelo caminho. Recalcular com
+   bestEver() por treino seria quadrático e isto roda a cada render da home. */
+function totalDeRecordes(lista){
+  const cronologico = (lista || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+  const melhorPorExercicio = {};
+  let total = 0;
+  cronologico.forEach(h => {
+    (h.exercises || []).forEach(e => {
+      if(e.type !== 'reps') return;
+      let melhorDaVez = null;
+      (e.sets || []).forEach(s => {
+        const w = parseFloat(s.w) || 0, r = parseFloat(s.r) || 0;
+        if(w <= 0 || r <= 0) return;
+        if(!melhorDaVez || w > melhorDaVez.w || (w === melhorDaVez.w && r > melhorDaVez.r)) melhorDaVez = {w: w, r: r};
+      });
+      if(!melhorDaVez) return;
+      const anterior = melhorPorExercicio[e.exId];
+      if(!anterior || melhorDaVez.w > anterior.w || (melhorDaVez.w === anterior.w && melhorDaVez.r > anterior.r)){
+        total++;
+        melhorPorExercicio[e.exId] = melhorDaVez;
+      }
+    });
+  });
+  return total;
+}
+
+function metricasDaHome(lista, perfil, agora){
+  const quando = agora ? new Date(agora) : new Date();
+  const treinos = (lista || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  if(!treinos.length){
+    return {vazio: true, sequencia: 0, treinosSemana: 0, metaSemanal: null, recordes: 0, total: 0, ultimo: null};
+  }
+  const inicioSemana = inicioDaSemana(quando);
+  const meta = perfil && Number(perfil.dias) > 0 ? Number(perfil.dias) : null;
+  const u = treinos[0];
+  return {
+    vazio: false,
+    sequencia: sequenciaDeSemanas(treinos, quando),
+    treinosSemana: treinos.filter(h => new Date(h.date) >= inicioSemana).length,
+    metaSemanal: meta,
+    recordes: totalDeRecordes(treinos),
+    total: treinos.length,
+    ultimo: {
+      nome: u.name,
+      data: u.date,
+      minutos: Math.round((u.duration || 0) / 60),
+      volume: u.volume || 0,
+      series: u.setsDone || 0
+    }
+  };
+}
+
+/* -------------------------------------------------------------------------
    16b. EVOLUÇÃO
    ------------------------------------------------------------------------- */
 function exerciciosComHistorico(){
@@ -311,5 +395,6 @@ function renderCalendar(){
 export {
   history, setHistory, saveHistory, renderHistory, editarDataTreino, deleteHistory,
   exerciciosComHistorico, serieTemporalDoExercicio, showHistoryTab, historyTab, calViewDate,
-  openCalendar, renderCalendar
+  openCalendar, renderCalendar,
+  metricasDaHome, sequenciaDeSemanas, totalDeRecordes
 };

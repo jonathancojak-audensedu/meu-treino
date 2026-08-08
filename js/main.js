@@ -15,7 +15,7 @@ import { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalida
 import {
   history, setHistory, saveHistory, renderHistory, editarDataTreino, deleteHistory,
   exerciciosComHistorico, serieTemporalDoExercicio, showHistoryTab, historyTab, calViewDate,
-  openCalendar, renderCalendar
+  openCalendar, renderCalendar, metricasDaHome
 } from './history.js';
 import {
   overrides, setOverrides, customEx, setCustomEx, favoritos, setFavoritos, session, setSession,
@@ -179,15 +179,7 @@ function renderHome(){
       '<span class="meta">Monte na hora, escolhendo os exercícios</span>' +
     '</span><span class="arrow" aria-hidden="true">›</span></button>';
 
-  const now = new Date();
-  const weekStart = new Date(now); weekStart.setHours(0,0,0,0);
-  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  $('homestats').innerHTML =
-    '<div class="homestat"><div class="v">' + history.filter(h => new Date(h.date) >= weekStart).length + '</div><div class="l">Esta semana</div></div>' +
-    '<div class="homestat"><div class="v">' + history.filter(h => new Date(h.date) >= monthStart).length + '</div><div class="l">Este mês</div></div>' +
-    '<div class="homestat"><div class="v">' + history.length + '</div><div class="l">Total</div></div>';
-
+  renderPainelHome();
   atualizarCabecalhoHome();
 
   const hasActive = !!(session && session.startedAt);
@@ -198,6 +190,38 @@ function renderHome(){
     $('resume-sub').textContent = 'iniciado ' + (mins < 1 ? 'agora há pouco' : 'há ' + mins + ' min') + ', tudo o que você registrou está salvo';
   }
   updateTrainingBadge();
+}
+
+/* Painel de boas-vindas: três números e uma linha com o último treino. Quem
+   ainda não treinou não vê três zeros, vê um convite, porque zero em destaque
+   na primeira abertura parece que o app está quebrado. */
+function renderPainelHome(){
+  const m = metricasDaHome(history, profile, new Date());
+  const el = $('homestats');
+  el.classList.toggle('vazio', m.vazio);
+
+  if(m.vazio){
+    el.innerHTML =
+      '<div class="homevazio">' +
+        '<div class="hv-t">' + (profile && profile.nome ? 'Bora começar, ' + esc(profile.nome) + '?' : 'Bora começar?') + '</div>' +
+        '<div class="hv-s">Seu primeiro treino começa a sequência. Escolha um dos treinos abaixo e o resto aparece sozinho aqui.</div>' +
+      '</div>';
+    $('home-ultimo').style.display = 'none';
+    return;
+  }
+
+  const stat = (valor, rotulo) => '<div class="homestat"><div class="v">' + valor + '</div><div class="l">' + rotulo + '</div></div>';
+  const semana = m.metaSemanal ? m.treinosSemana + '<span class="de">/' + m.metaSemanal + '</span>' : String(m.treinosSemana);
+  el.innerHTML =
+    stat(m.sequencia, m.sequencia === 1 ? 'Semana seguida' : 'Semanas seguidas') +
+    stat(semana, 'Esta semana') +
+    stat(m.recordes, m.recordes === 1 ? 'Recorde' : 'Recordes');
+
+  const partes = [daysAgo(m.ultimo.data)];
+  if(m.ultimo.minutos) partes.push(m.ultimo.minutos + ' min');
+  if(m.ultimo.volume) partes.push(m.ultimo.volume + ' kg');
+  $('home-ultimo').innerHTML = '<span class="ut">' + esc(m.ultimo.nome) + '</span> · ' + esc(partes.join(' · '));
+  $('home-ultimo').style.display = '';
 }
 
 function atualizarCabecalhoHome(){
@@ -402,6 +426,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v45', itens: [
+    'Home virou um painel: sequência de semanas treinando, treinos da semana contra a sua meta e recordes batidos'
+  ]},
   {versao: 'meu-treino-v44', itens: [
     'Dá pra compartilhar um treino antigo pelo histórico, não só o que você acabou de terminar'
   ]},
@@ -873,6 +900,7 @@ window.MT = {
   exportBackup: exportBackup, importBackup: importBackup,
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
+  metricasDaHome: metricasDaHome,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers
