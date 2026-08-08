@@ -608,6 +608,10 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v50', itens: [
+    'Leg press, hack machine, peck deck e outros exercícios de máquina e cabo voltaram a aparecer nos treinos gerados',
+    'Quem marcou dor recebe mais exercício guiado, que é mais seguro'
+  ]},
   {versao: 'meu-treino-v49', itens: [
     'Corrige a aba Treinos sem responder ao toque logo depois de uma atualização'
   ]},

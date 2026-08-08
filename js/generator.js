@@ -38,14 +38,14 @@ const TETO_EXERCICIOS = {30:4, 45:5, 60:6, 90:8};
 
 /* divisões por dia disponível */
 const MODELOS = {
-  full_A: {nome:'Corpo inteiro A', block:'full', slots:[['emp_h','principal'],['pux_h','principal'],['joelho','principal'],['quadril','acessorio'],['lateral','isolado'],['core','isolado']]},
+  full_A: {nome:'Corpo inteiro A', block:'full', slots:[['emp_h','principal'],['pux_h','principal'],['joelho','principal'],['quadril','acessorio'],['emp_h','isolado'],['lateral','isolado'],['core','isolado']]},
   full_B: {nome:'Corpo inteiro B', block:'full', slots:[['emp_v','principal'],['pux_v','principal'],['quadril','principal'],['joelho','acessorio'],['biceps','isolado'],['triceps','isolado']]},
   full_C: {nome:'Corpo inteiro C', block:'full', slots:[['emp_h','acessorio'],['pux_h','acessorio'],['joelho','acessorio'],['quadril','acessorio'],['lateral','isolado'],['core','isolado']]},
-  upper_A:{nome:'Superiores A', block:'upper', slots:[['emp_h','principal'],['pux_h','principal'],['emp_v','acessorio'],['pux_v','acessorio'],['lateral','isolado'],['biceps','isolado'],['triceps','isolado'],['trapezio','isolado']]},
+  upper_A:{nome:'Superiores A', block:'upper', slots:[['emp_h','principal'],['pux_h','principal'],['emp_v','acessorio'],['pux_v','acessorio'],['emp_h','isolado'],['lateral','isolado'],['biceps','isolado'],['triceps','isolado'],['trapezio','isolado']]},
   upper_B:{nome:'Superiores B', block:'upper', slots:[['pux_v','principal'],['emp_v','principal'],['pux_h','acessorio'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['biceps','isolado'],['pegada','isolado']]},
   lower_A:{nome:'Inferiores A', block:'lower', slots:[['joelho','principal'],['quadril','acessorio'],['joelho','acessorio'],['quadril','isolado'],['panturrilha','isolado'],['core','isolado']]},
   lower_B:{nome:'Inferiores B', block:'lower', slots:[['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['joelho','isolado'],['panturrilha','isolado'],['core','isolado']]},
-  push:   {nome:'Empurrar', block:'upper', slots:[['emp_h','principal'],['emp_v','principal'],['emp_h','acessorio'],['lateral','isolado'],['triceps','isolado'],['triceps','isolado']]},
+  push:   {nome:'Empurrar', block:'upper', slots:[['emp_h','principal'],['emp_v','principal'],['emp_h','acessorio'],['emp_h','isolado'],['lateral','isolado'],['triceps','isolado'],['triceps','isolado']]},
   pull:   {nome:'Puxar', block:'upper', slots:[['pux_v','principal'],['pux_h','principal'],['pux_h','acessorio'],['pux_v','acessorio'],['biceps','isolado'],['biceps','isolado'],['trapezio','isolado']]},
   legs:   {nome:'Pernas', block:'lower', slots:[['joelho','principal'],['quadril','principal'],['joelho','acessorio'],['quadril','acessorio'],['panturrilha','isolado'],['core','isolado']]},
   bracos: {nome:'Braços e antebraço', block:'upper', slots:[['biceps','acessorio'],['triceps','acessorio'],['biceps','isolado'],['triceps','isolado'],['punho','isolado'],['pegada','isolado']]}
@@ -135,8 +135,10 @@ const PESOS = {
   repetido: -10,                // já usado: só entra se não houver melhor
   isolamentoEmComposto: -60,    // isolamento não substitui um exercício composto
   compostoEmIsolado: -50,       // e o espaço de isolamento é pra isolamento
-  porNivelEquipamento: 4,       // prefere o melhor equipamento disponível
+  porAfinidadeEquipamento: 4,   // o que aquele equipamento faz bem naquele papel
+  equipamentoNovoNoDia: 14,     // mistura barra, máquina e cabo dentro do dia
   equipamentoImprovisado: -25,  // elástico e peso corporal só quando não há melhor
+  guiadoComDor: 12,             // quem declarou dor vai melhor no movimento guiado
   porProximidadeComplexidade: 4,// complexidade perto do alvo do papel
   grupoPriorizado: 25,          // desempata a favor do grupo que a pessoa escolheu
   unilateralComoPrincipal: -6   // unilateral rende menos carga no exercício principal
@@ -149,6 +151,55 @@ const PESOS = {
    máquina nunca eram escolhidas em nenhum treino. */
 const NIVEL_IMPROVISADO = 2;
 
+/* Equipamento não é ranking com a barra no topo. Cada um faz uma coisa
+   melhor: peso livre exige estabilizar, o que faz parte do trabalho num
+   composto pesado e atrapalha num isolamento; máquina e cabo guiam o
+   movimento, o que ajuda a isolar e a treinar com dor. Antes disto valia
+   "nível do equipamento x peso", e a barra ganhava em todo papel: leg press,
+   hack machine, peck deck e mais doze exercícios nunca eram escolhidos em
+   nenhum programa, mesmo com a academia inteira disponível. */
+const AFINIDADE_EQUIPAMENTO = {
+  barra:      {principal:6, acessorio:5, isolado:4},
+  barra_fixa: {principal:6, acessorio:5, isolado:5},
+  halter:     {principal:5, acessorio:5, isolado:5},
+  smith:      {principal:5, acessorio:5, isolado:5},
+  maquina:    {principal:5, acessorio:5, isolado:5},
+  polia:      {principal:4, acessorio:5, isolado:5},
+  corpo:      {principal:3, acessorio:3, isolado:3},
+  elastico:   {principal:1, acessorio:2, isolado:3},
+  cardio:     {principal:5, acessorio:5, isolado:5}
+};
+/* banco é acessório de outro equipamento e não define o exercício, então fica
+   de fora da conta: quem manda no supino com halteres é o halter */
+function afinidadeDeEquipamento(meta, papel){
+  const notas = meta.e.map(eq => AFINIDADE_EQUIPAMENTO[eq] && AFINIDADE_EQUIPAMENTO[eq][papel]).filter(n => n != null);
+  return notas.length ? Math.max.apply(null, notas) : 4;
+}
+
+/* Como um bom programa mistura os três, o que interessa pra variedade é a
+   família do equipamento, não o item exato: halter e barra contam como o
+   mesmo tipo de estímulo, máquina e Smith também. */
+function familiaDeEquipamento(meta){
+  if(meta.e.indexOf('barra') !== -1 || meta.e.indexOf('barra_fixa') !== -1 || meta.e.indexOf('halter') !== -1) return 'livre';
+  if(meta.e.indexOf('maquina') !== -1 || meta.e.indexOf('smith') !== -1) return 'maquina';
+  if(meta.e.indexOf('polia') !== -1) return 'cabo';
+  if(meta.e.indexOf('elastico') !== -1) return 'elastico';
+  if(meta.e.indexOf('cardio') !== -1) return 'cardio';
+  return 'corpo';
+}
+
+/* Máquina, Smith e polia guiam a trajetória. Pra quem declarou dor, isso é
+   vantagem, não demérito: já foram tirados os exercícios que carregam a
+   articulação dolorida, e entre os que sobraram o guiado é o mais seguro. */
+const FAMILIAS_GUIADAS = ['maquina', 'cabo'];
+
+/* Diferença de pontos abaixo da qual dois exercícios são tratados como
+   intercambiáveis e entram no rodízio. Grande o bastante pra cobrir um passo
+   de complexidade ou de afinidade, pequena o bastante pra não deixar entrar
+   um exercício que perde por motivo de verdade, como isolamento num espaço
+   de composto (que custa 50 pontos). */
+const MARGEM_EQUIVALENTE = 8;
+
 function escolherExercicio(padrao, papel, perfil, usados, noDia, rotacao){
   const lista = candidatos(padrao, perfil).filter(id => (noDia || []).indexOf(id) === -1);
   if(!lista.length) return null;
@@ -159,8 +210,12 @@ function escolherExercicio(padrao, papel, perfil, usados, noDia, rotacao){
      Punir isolamento nesses padrões não escolhe nada melhor, só embaralha a
      ordem, então a penalidade só vale quando existe composto pra comparar. */
   const existeComposto = lista.some(id => !META[id].iso);
+  /* famílias de equipamento já presentes no dia, pra premiar quem diversifica */
+  const familiasNoDia = (noDia || []).filter(id => META[id]).map(id => familiaDeEquipamento(META[id]));
+  const temDor = (perfil.dores || []).some(d => d !== 'nenhuma');
   const pontuado = lista.map(id => {
     const t = META[id];
+    const familia = familiaDeEquipamento(t);
     let pt = 0;
     // variedade só vale entre equipamentos de verdade: elástico não substitui
     // polia, mas máquina e halter valem o mesmo pra esse fim
@@ -170,7 +225,9 @@ function escolherExercicio(padrao, papel, perfil, usados, noDia, rotacao){
     if(t.nivel <= NIVEL_IMPROVISADO && melhorNivel > NIVEL_IMPROVISADO) pt += PESOS.equipamentoImprovisado;
     if(t.iso && papel !== 'isolado' && existeComposto) pt += PESOS.isolamentoEmComposto;
     if(!t.iso && papel === 'isolado') pt += PESOS.compostoEmIsolado;
-    pt += t.nivel * PESOS.porNivelEquipamento;
+    pt += afinidadeDeEquipamento(t, papel === 'cardio' ? 'acessorio' : papel) * PESOS.porAfinidadeEquipamento;
+    if(familiasNoDia.indexOf(familia) === -1 && familia !== 'corpo') pt += PESOS.equipamentoNovoNoDia;
+    if(temDor && FAMILIAS_GUIADAS.indexOf(familia) !== -1) pt += PESOS.guiadoComDor;
     pt += (3 - Math.abs(alvo - t.c)) * PESOS.porProximidadeComplexidade;
     if(prio.some(g => grupoBate(g, t.m))) pt += PESOS.grupoPriorizado;
     if(t.u && papel === 'principal') pt += PESOS.unilateralComoPrincipal;
@@ -182,10 +239,21 @@ function escolherExercicio(padrao, papel, perfil, usados, noDia, rotacao){
      ordem alfabética congelaria o mesmo vencedor pra sempre e deixaria o
      equivalente fora de qualquer treino, que é justamente como metade do
      catálogo ficava invisível. Alternar entre os empatados mantém a função
-     pura, porque a rotação vem do próprio estado da montagem. */
+     pura, porque a rotação vem do próprio estado da montagem.
+
+     A margem existe porque empate exato é raro demais pra dar conta do
+     problema: panturrilha burro perde da panturrilha em pé por um ponto de
+     complexidade e some do catálogo inteiro por causa disso. Quem está a
+     poucos pontos do primeiro faz o mesmo trabalho e entra no rodízio. */
   const melhorPonto = pontuado[0].pt;
-  const empatados = pontuado.filter(x => x.pt === melhorPonto);
-  return empatados[(rotacao || 0) % empatados.length].id;
+  const equivalentes = pontuado.filter(x => x.pt >= melhorPonto - MARGEM_EQUIVALENTE);
+  /* Entre equivalentes, quem ainda não entrou na semana passa na frente. Só
+     rotacionar por índice não bastava: cadeira flexora, mesa flexora e
+     flexora unilateral são idênticas nos metadados, e o índice caía sempre
+     na mesma, deixando as outras duas fora de qualquer programa. */
+  const inéditos = equivalentes.filter(x => usados.indexOf(x.id) === -1);
+  const pool = inéditos.length ? inéditos : equivalentes;
+  return pool[(rotacao || 0) % pool.length].id;
 }
 
 /* Teto de espaços extras por dia. Sem isso, priorizar dois grupos de vários
@@ -290,7 +358,7 @@ function gerarPrograma(perfil){
 
     slotsDoDia(modelo, perfil).forEach(([padrao, papel]) => {
       if(itens.length >= teto) return;
-      const id = escolherExercicio(padrao, papel, perfil, usados, itens.map(x => x.ex), usados.length);
+      const id = escolherExercicio(padrao, papel, perfil, usados, itens.map(x => x.ex), usados.length + i);
       if(!id) return;                                  // sem opção viável, o espaço fica vazio
       usados.push(id);
       const def = EX[id];
@@ -308,7 +376,7 @@ function gerarPrograma(perfil){
     const minimo = Math.min(4, teto);
     for(let r = 0; r < RESERVA.length && itens.length < minimo; r++){
       const papel = itens.length < 2 ? 'principal' : 'acessorio';
-      const id = escolherExercicio(RESERVA[r], papel, perfil, usados, itens.map(x => x.ex), usados.length);
+      const id = escolherExercicio(RESERVA[r], papel, perfil, usados, itens.map(x => x.ex), usados.length + i);
       if(!id) continue;
       usados.push(id);
       const def = EX[id];

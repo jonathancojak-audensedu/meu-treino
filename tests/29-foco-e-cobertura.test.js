@@ -46,13 +46,17 @@ const seriesDoGrupo = (MT, programa, musculo) => programa.reduce((a, d) =>
   /* varre uma grade de perfis: basta existir algum caminho que chegue neles,
      não que apareçam em todo treino */
   const alcancados = {};
-  for(const dias of [2,3,4,5,6])
-    for(const tempo of [30,45,60,90])
-      for(const objetivo of ['forca','hipertrofia','emagrecer','saude'])
-        for(const local of ['academia','simples','casa','corpo'])
-          for(const dores of [[], ['punho'], ['ombro','joelho']])
-            for(const prioridade of [[], ['bracos'], ['costas'], ['peito','bracos']])
-              idsDe(gerar(perfil({dias, tempo, objetivo, local, dores, prioridade}))).forEach(id => { alcancados[id] = true; });
+  /* a grade precisa variar experiencia e prioridade: a complexidade maxima muda
+     com a experiencia e o foco muscular muda os espacos do dia, entao fixar os
+     dois deixava perfis inteiros de fora e dava alcancabilidade por engano */
+  for(const experiencia of ['iniciante','intermediario','avancado'])
+    for(const dias of [2,3,4,5,6])
+      for(const tempo of [30,45,60,90])
+        for(const objetivo of ['forca','hipertrofia','emagrecer','saude'])
+          for(const local of ['academia','simples','casa','corpo'])
+            for(const dores of [[], ['punho'], ['ombro','joelho']])
+              for(const prioridade of [[], ['bracos'], ['costas'], ['peito','bracos'], ['pernas'], ['core']])
+                idsDe(gerar(perfil({experiencia, dias, tempo, objetivo, local, dores, prioridade}))).forEach(id => { alcancados[id] = true; });
 
   const porPadrao = padrao => Object.keys(MT.META).filter(id => MT.META[id].p === padrao);
   ['pegada','punho','trapezio'].forEach(padrao => {
