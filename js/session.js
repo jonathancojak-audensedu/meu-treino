@@ -1401,6 +1401,37 @@ function renderSummary(entry, previous, prs, todayCount){
    síncrona dentro do próprio gesto de toque, sem nenhum await antes dele.
    ------------------------------------------------------------------------- */
 let shareFile = null;
+/* foto tirada na hora de compartilhar. Fica só em memória de propósito: é do
+   momento, não é dado do treino, e guardar imagem no IndexedDB a cada treino
+   encheria o armazenamento sem a pessoa pedir. */
+let fotoCompartilhamento = null;
+/* último resumo renderizado, pra regerar a imagem quando a foto entra ou sai */
+let resumoAtual = null;
+
+/* Modelo de dados do card, separado do desenho. Recebe o treino já salvo e os
+   recordes, devolve só texto pronto: dá pra testar sem canvas, e é o mesmo
+   modelo que o histórico vai usar pra compartilhar um treino antigo. */
+function montarCartaoResumo(entry, prs){
+  const nome = (profile && profile.nome) ? profile.nome : 'Meu Treino';
+  return {
+    nome: nome,
+    inicial: (profile && profile.nome) ? profile.nome[0].toUpperCase() : '',
+    avatar: avatar || null,
+    titulo: entry.name,
+    data: new Date(entry.date).toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'}),
+    stats: [
+      {valor: String(Math.round(entry.duration / 60)), rotulo: 'MINUTOS'},
+      {valor: String(entry.setsDone), rotulo: 'SÉRIES'},
+      {valor: String(entry.volume), rotulo: 'VOLUME KG'}
+    ],
+    recordes: (prs || []).slice(0, 4).map(p => ({nome: p.name, detalhe: p.detail})),
+    exercicios: (entry.exercises || []).map(e => ({
+      nome: e.name,
+      series: (e.sets || []).map(s => fmtSet(s, e.type)).join('   ')
+    })),
+    marca: 'MEU TREINO'
+  };
+}
 
 function carregarImagem(src){
   return new Promise((resolve, reject) => {
@@ -1416,6 +1447,36 @@ function truncarTexto(ctx, texto, maxWidth){
   let t = texto;
   while(t.length > 1 && ctx.measureText(t + '…').width > maxWidth) t = t.slice(0, -1);
   return t + '…';
+}
+
+/* A foto entra como fundo do card inteiro, recortada pelo centro pra cobrir os
+   1080x1920 sem distorcer, e some sob um véu escuro. Sem o véu o texto verde
+   sobre foto clara fica ilegível; com ele, a foto aparece o suficiente pra dar
+   contexto e o card continua sendo o card. */
+function desenharFotoDeFundo(ctx, foto, W, H){
+  const escala = Math.max(W / foto.width, H / foto.height);
+  const lw = foto.width * escala, lh = foto.height * escala;
+  ctx.drawImage(foto, (W - lw) / 2, (H - lh) / 2, lw, lh);
+
+  ctx.fillStyle = 'rgba(16,19,20,0.28)';
+  ctx.fillRect(0, 0, W, H);
+  // reforça topo e base, que é onde ficam o nome e a marca
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(16,19,20,0.62)');
+  g.addColorStop(0.30, 'rgba(16,19,20,0.18)');
+  g.addColorStop(0.70, 'rgba(16,19,20,0.34)');
+  g.addColorStop(1, 'rgba(16,19,20,0.80)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+/* Com foto atrás, um véu forte o bastante pra garantir contraste apagaria a
+   foto. A sombra no texto resolve os dois: a foto continua visível e cada
+   letra carrega o próprio contraste, inclusive sobre as partes claras. */
+function aplicarSombraDeTexto(ctx, ligada){
+  ctx.shadowColor = ligada ? 'rgba(0,0,0,0.9)' : 'transparent';
+  ctx.shadowBlur = ligada ? 14 : 0;
+  ctx.shadowOffsetY = ligada ? 2 : 0;
 }
 
 async function gerarImagemResumo(entry, prs){
@@ -1441,6 +1502,18 @@ async function gerarImagemResumo(entry, prs){
   const W = 1080, MX = 80;
   ctx.fillStyle = '#101314';
   ctx.fillRect(0, 0, W, 1920);
+  if(fotoCompartilhamento){
+    desenharFotoDeFundo(ctx, fotoCompartilhamento, W, 1920);
+    aplicarSombraDeTexto(ctx, true);
+  }
+
+  const dados = montarCartaoResumo(entry, prs);
+  /* Os cinzas do app foram escolhidos pra fundo escuro fixo. Sobre uma foto
+     clara eles somem, então com foto os secundários clareiam. Verde e branco
+     já têm contraste suficiente e não mudam. */
+  const comFoto = !!fotoCompartilhamento;
+  const CINZA_CLARO = comFoto ? '#dde3e7' : '#a3adb2';
+  const CINZA_ROTULO = comFoto ? '#c6ced4' : '#7f898e';
 
   const cx = MX + 64, cy = 170, r = 64;
   ctx.save();
@@ -1450,121 +1523,161 @@ async function gerarImagemResumo(entry, prs){
   ctx.clip();
   ctx.fillStyle = '#232830';
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  if(avatar){
+  if(dados.avatar){
     try{
-      const img = await carregarImagem(avatar);
+      const img = await carregarImagem(dados.avatar);
       ctx.drawImage(img, cx - r, cy - r, r * 2, r * 2);
     }catch(e){ /* sem foto, fica so o fundo */ }
   }
   ctx.restore();
-  if(!avatar){
-    ctx.fillStyle = '#7f898e';
+  if(!dados.avatar){
+    ctx.fillStyle = CINZA_ROTULO;
     ctx.font = '700 48px "Space Grotesk"';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(profile && profile.nome ? profile.nome[0].toUpperCase() : '', cx, cy + 2);
+    ctx.fillText(dados.inicial, cx, cy + 2);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'alphabetic';
   }
 
   ctx.fillStyle = '#eef1f0';
   ctx.font = '600 40px "Space Grotesk"';
-  ctx.fillText(profile && profile.nome ? profile.nome : 'Meu Treino', cx + r + 32, cy + 14);
+  ctx.fillText(dados.nome, cx + r + 32, cy + 14);
 
   let y = 340;
   ctx.fillStyle = '#b9ff3c';
   ctx.font = '700 64px "Space Grotesk"';
-  ctx.fillText(truncarTexto(ctx, entry.name, W - MX * 2), MX, y);
+  ctx.fillText(truncarTexto(ctx, dados.titulo, W - MX * 2), MX, y);
 
   y += 56;
-  ctx.fillStyle = '#a3adb2';
+  ctx.fillStyle = CINZA_CLARO;
   ctx.font = '400 32px "JetBrains Mono"';
-  ctx.fillText(new Date(entry.date).toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long'}), MX, y);
+  ctx.fillText(dados.data, MX, y);
 
   y += 110;
-  const stats = [
-    {v: Math.round(entry.duration / 60), l: 'MINUTOS'},
-    {v: entry.setsDone, l: 'SÉRIES'},
-    {v: entry.volume, l: 'VOLUME KG'}
-  ];
   const colW = (W - MX * 2) / 3;
-  stats.forEach((s, i) => {
+  dados.stats.forEach((s, i) => {
     const sx = MX + colW * i;
     ctx.fillStyle = '#b9ff3c';
     ctx.font = '600 84px "JetBrains Mono"';
-    ctx.fillText(String(s.v), sx, y);
-    ctx.fillStyle = '#7f898e';
+    ctx.fillText(s.valor, sx, y);
+    ctx.fillStyle = CINZA_ROTULO;
     ctx.font = '600 26px "JetBrains Mono"';
-    ctx.fillText(s.l, sx, y + 40);
+    ctx.fillText(s.rotulo, sx, y + 40);
   });
 
   y += 100;
-  ctx.strokeStyle = '#2a3034';
+  aplicarSombraDeTexto(ctx, false);   // a divisória não leva sombra, só o texto
+  ctx.strokeStyle = fotoCompartilhamento ? 'rgba(238,241,240,0.35)' : '#2a3034';
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(MX, y); ctx.lineTo(W - MX, y); ctx.stroke();
+  if(fotoCompartilhamento) aplicarSombraDeTexto(ctx, true);
 
-  if(prs.length){
+  if(dados.recordes.length){
     y += 70;
     ctx.fillStyle = '#9ad02f';
     ctx.font = '600 28px "JetBrains Mono"';
     ctx.fillText('RECORDES', MX, y);
-    prs.slice(0, 4).forEach(p => {
+    dados.recordes.forEach(p => {
       y += 64;
       ctx.fillStyle = '#eef1f0';
       ctx.font = '600 36px "Space Grotesk"';
       ctx.textAlign = 'left';
-      ctx.fillText(truncarTexto(ctx, p.name, W - MX * 2 - 260), MX, y);
+      ctx.fillText(truncarTexto(ctx, p.nome, W - MX * 2 - 260), MX, y);
       ctx.fillStyle = '#b9ff3c';
       ctx.font = '600 32px "JetBrains Mono"';
       ctx.textAlign = 'right';
-      ctx.fillText(p.detail, W - MX, y);
+      ctx.fillText(p.detalhe, W - MX, y);
       ctx.textAlign = 'left';
     });
     y += 30;
   }
 
   y += 70;
-  ctx.fillStyle = '#7f898e';
+  ctx.fillStyle = CINZA_ROTULO;
   ctx.font = '600 28px "JetBrains Mono"';
   ctx.fillText('SÉRIES REGISTRADAS', MX, y);
   y += 20;
 
   const limiteY = 1780, linhaAltura = 72;
   let mostrados = 0;
-  for(const ex of entry.exercises){
+  for(const ex of dados.exercicios){
     if(y + linhaAltura > limiteY) break;
     y += linhaAltura;
     ctx.fillStyle = '#eef1f0';
     ctx.font = '600 34px "Space Grotesk"';
-    ctx.fillText(truncarTexto(ctx, ex.name, W - MX * 2), MX, y);
+    ctx.fillText(truncarTexto(ctx, ex.nome, W - MX * 2), MX, y);
     y += 32;
-    ctx.fillStyle = '#a3adb2';
+    ctx.fillStyle = CINZA_CLARO;
     ctx.font = '400 26px "JetBrains Mono"';
-    ctx.fillText(truncarTexto(ctx, ex.sets.map(s => fmtSet(s, ex.type)).join('   '), W - MX * 2), MX, y);
+    ctx.fillText(truncarTexto(ctx, ex.series, W - MX * 2), MX, y);
     mostrados++;
   }
-  const restantes = entry.exercises.length - mostrados;
+  const restantes = dados.exercicios.length - mostrados;
   if(restantes > 0){
     y += 50;
-    ctx.fillStyle = '#7f898e';
+    ctx.fillStyle = CINZA_ROTULO;
     ctx.font = '400 28px "JetBrains Mono"';
     ctx.fillText('+ ' + restantes + (restantes === 1 ? ' exercício' : ' exercícios'), MX, y);
   }
 
-  ctx.fillStyle = '#3a4247';
+  ctx.fillStyle = comFoto ? CINZA_ROTULO : '#3a4247';
   ctx.font = '600 26px "JetBrains Mono"';
   ctx.textAlign = 'center';
-  ctx.fillText('MEU TREINO', W / 2, 1870);
+  ctx.fillText(dados.marca, W / 2, 1870);
 
   return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
 }
 
 async function prepararCompartilhamento(entry, prs){
   shareFile = null;
+  resumoAtual = {entry: entry, prs: prs};
   try{
     const blob = await gerarImagemResumo(entry, prs);
     if(blob) shareFile = new File([blob], 'treino-' + entry.id + '.png', {type: 'image/png'});
   }catch(e){ shareFile = null; }
+}
+
+/* A foto é escolhida antes de compartilhar, nunca dentro do clique: o
+   navigator.share do iOS exige chamada síncrona no gesto, então a imagem
+   precisa já estar pronta quando a pessoa toca em compartilhar. */
+async function usarFotoNoCompartilhamento(file){
+  if(!file || !file.type || !file.type.startsWith('image/')){ toast('Escolha um arquivo de imagem'); return; }
+  if(!resumoAtual){ toast('Abra o resumo de um treino antes de escolher a foto'); return; }
+  try{
+    fotoCompartilhamento = await createImageBitmap(file);
+  }catch(e){
+    toast('Não consegui usar essa imagem');
+    return;
+  }
+  atualizarBotoesFoto();
+  await prepararCompartilhamento(resumoAtual.entry, resumoAtual.prs);
+  toast('Foto adicionada ao card');
+}
+
+async function removerFotoDoCompartilhamento(){
+  if(!fotoCompartilhamento) return;
+  if(fotoCompartilhamento.close) fotoCompartilhamento.close();
+  fotoCompartilhamento = null;
+  atualizarBotoesFoto();
+  if(resumoAtual) await prepararCompartilhamento(resumoAtual.entry, resumoAtual.prs);
+  toast('Foto removida do card');
+}
+
+/* a foto vale só pra este compartilhamento; sair do resumo descarta */
+function limparFotoCompartilhamento(){
+  if(fotoCompartilhamento && fotoCompartilhamento.close) fotoCompartilhamento.close();
+  fotoCompartilhamento = null;
+  resumoAtual = null;
+  atualizarBotoesFoto();
+}
+
+function atualizarBotoesFoto(){
+  const add = $('btn-sum-foto');
+  const rem = $('btn-sum-foto-remover');
+  if(!add || !rem) return;
+  add.textContent = fotoCompartilhamento ? 'Trocar foto' : 'Adicionar foto';
+  rem.style.display = fotoCompartilhamento ? '' : 'none';
 }
 
 function baixarImagem(file){
@@ -1611,6 +1724,7 @@ export {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile,
+  compartilharResumo, getShareFile, montarCartaoResumo,
+  usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao
 };

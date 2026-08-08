@@ -141,6 +141,8 @@
      divisória acima, pra "excluir exercício" não parecer só mais um botão
      ao lado de "− série" */
   .exfoot.perigo{border-top:1px dashed var(--line); padding-top:10px; margin-top:2px;}
+  /* botões da foto do card de compartilhar, logo acima da barra de ações */
+  .sumfotobar{display:flex; gap:8px; flex-wrap:wrap; padding:0 16px;}
   .noteblock{font-size:12.5px; color:var(--text-dim); line-height:1.55; padding:0 16px 14px; display:none;}
   .noteblock.open{display:block;}
 

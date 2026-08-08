@@ -100,6 +100,12 @@
       </div>
     </div>
     <div class="sumwrap" id="sumwrap"></div>
+    <div class="sumfotobar">
+      <button class="minibtn" id="btn-sum-foto">Adicionar foto</button>
+      <button class="minibtn danger" id="btn-sum-foto-remover" style="display:none;">Remover foto</button>
+      <!-- capture abre a câmera direto no celular; no computador vira seletor de arquivo -->
+      <input type="file" accept="image/*" capture="environment" id="sum-foto-file" class="sr-only" tabindex="-1" aria-hidden="true">
+    </div>
     <div class="startbar">
       <button class="ghostbtn" id="btn-sum-share">Compartilhar</button>
       <button class="finishbtn" id="btn-sum-done">Voltar para treinos</button>

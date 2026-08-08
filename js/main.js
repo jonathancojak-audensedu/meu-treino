@@ -30,7 +30,8 @@ import {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile,
+  compartilharResumo, getShareFile, montarCartaoResumo,
+  usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao
 } from './session.js';
 import {
@@ -400,6 +401,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v43', itens: [
+    'Dá pra tirar uma foto na hora de compartilhar o treino: ela entra como fundo do card'
+  ]},
   {versao: 'meu-treino-v42', itens: [
     'Tempo de descanso configurável: mais curto ou mais longo em Ajustes, e o -15s/+15s durante o treino agora vale pras próximas séries daquele exercício'
   ]},
@@ -635,8 +639,15 @@ $('session-back').onclick = leaveSession;
 $('btn-editprog').onclick = () => openEdit(previewKey);
 $('btn-canceledit').onclick = cancelEdit;
 $('btn-saveedit').onclick = saveEdit;
-$('btn-sum-done').onclick = () => { showScreen('home'); renderHome(); };
+$('btn-sum-done').onclick = () => { limparFotoCompartilhamento(); showScreen('home'); renderHome(); };
 $('btn-sum-share').onclick = compartilharResumo;
+$('btn-sum-foto').onclick = () => $('sum-foto-file').click();
+$('btn-sum-foto-remover').onclick = removerFotoDoCompartilhamento;
+$('sum-foto-file').onchange = e => {
+  const f = e.target.files[0];
+  if(f) usarFotoNoCompartilhamento(f);
+  e.target.value = '';
+};
 $('rest-sub').onclick = () => addRest(-15);
 $('rest-add').onclick = () => addRest(15);
 $('rest-skip').onclick = skipRest;
@@ -852,6 +863,8 @@ window.MT = {
   Store: Store,
   exportBackup: exportBackup, importBackup: importBackup,
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
+  montarCartaoResumo: montarCartaoResumo,
+  usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers
 };
