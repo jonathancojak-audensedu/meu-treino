@@ -25,7 +25,8 @@ const HISTORICO = [
 
   console.log('\n== previa: exercicio com historico mantem a sugestao de carga, sem historico mostra orientacao de primeira vez ==');
   const cardSupino = [...$('exlist').querySelectorAll('.excard')].find(c => c.textContent.includes('Supino reto barra'));
-  check('supino (com historico) continua mostrando a sugestao de carga existente', cardSupino.querySelector('.suggestion').textContent.startsWith('sugestão:'));
+  // o texto passou de "sugestão: ..." pro motor de progressao (subir/manter/aliviar)
+  check('supino (com historico) continua mostrando a orientacao de carga', /subir|manter|aliviar/.test(cardSupino.querySelector('.suggestion').textContent));
   const cardRemada = [...$('exlist').querySelectorAll('.excard')].find(c => c.textContent.includes('Remada curvada barra'));
   check('remada (sem historico) mostra orientacao de primeira vez em vez de nada', cardRemada.querySelector('.suggestion').textContent === 'primeira vez: comece leve e ajuste na segunda série');
 
@@ -40,7 +41,7 @@ const HISTORICO = [
   $('btn-begin').click();
   await wait(20);
   const cardSupinoAtivo = [...$('exlist').querySelectorAll('.excard')].find(c => c.textContent.includes('Supino reto barra'));
-  check('supino ativo continua com a sugestao de carga existente', cardSupinoAtivo.querySelector('.suggestion').textContent.startsWith('sugestão:'));
+  check('supino ativo continua com a orientacao de carga', /subir|manter|aliviar/.test(cardSupinoAtivo.querySelector('.suggestion').textContent));
   const cardRemadaAtivo = [...$('exlist').querySelectorAll('.excard')].find(c => c.textContent.includes('Remada curvada barra'));
   check('remada ativa (sem historico) mostra orientacao de primeira vez', cardRemadaAtivo.querySelector('.suggestion').textContent === 'primeira vez: comece leve e ajuste na segunda série');
 

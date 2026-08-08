@@ -178,12 +178,18 @@ function regiaoDoExercicio(exId){
   const meta = META[exId];
   return (meta && REGIAO_POR_PADRAO[meta.p]) || 'superior';
 }
-function ultimasSessoesDoExercicio(exId){
+/* Quatro sessoes, nao duas: detectar travamento pede uma janela maior que
+   decidir se sobe a carga. Vem da mais recente pra mais antiga. */
+const JANELA_PROGRESSAO = 4;
+function ultimasSessoesDoExercicio(exId, quantas){
+  const limite = quantas || JANELA_PROGRESSAO;
   const out = [];
   for(const h of history){
     const found = (h.exercises || []).find(e => e.exId === exId);
-    if(found && found.sets && found.sets.length) out.push({date: h.date, sets: found.sets});
-    if(out.length >= 2) break;
+    if(found && found.sets && found.sets.length){
+      out.push({date: h.date, sets: found.sets, setsPrescritos: found.setsPrescritos});
+    }
+    if(out.length >= limite) break;
   }
   return out;
 }
@@ -195,6 +201,129 @@ function parseFaixaReps(reps){
   return {piso, topo};
 }
 function arredondar2_5(n){ return Math.round(n / 2.5) * 2.5; }
+
+/* -------------------------------------------------------------------------
+   MOTOR DE PROGRESSÃO
+   Dupla progressão: primeiro a pessoa enche as repetições dentro da faixa
+   com a mesma carga, e só quando fecha todas as séries no topo é que a carga
+   sobe e as repetições voltam pro piso. É o modelo mais previsível pra quem
+   treina sozinho, porque o gatilho é observável na própria planilha do
+   treino, sem depender de sensação.
+
+   Função pura de propósito: entra o histórico do exercício e a prescrição,
+   sai a sugestão. Nada de tela nem de armazenamento aqui.
+   ------------------------------------------------------------------------- */
+
+/* De quanto sobe a carga, pelo que o equipamento realmente permite. Barra de
+   perna anda de 5 em 5 porque é o menor par de anilhas prático; halter anda
+   de 2 em 2 porque é assim que a dupla existe na estante; máquina anda de
+   placa em placa, e placa não tem meio. Antes disto o incremento olhava só
+   a região do corpo, e sugeria meia placa em máquina, que não existe. */
+const INCREMENTO_CARGA = {
+  barra_inferior: 5,
+  barra_superior: 2.5,
+  halter: 2,
+  maquina: 5,
+  polia: 5
+};
+const DEGRAU_MINIMO = 2.5;
+
+/* Três sessões no mesmo ponto antes de sugerir alívio. Com duas, uma noite
+   mal dormida já viraria deload; com quatro, a pessoa fica presa tempo
+   demais. Três sessões do mesmo exercício são de três a seis semanas de
+   treino real, o bastante pra ser estagnação e não um dia ruim. */
+const SESSOES_ATE_ALIVIO = 3;
+const FATOR_ALIVIO = 0.9;
+
+function incrementoDoExercicio(exId, regiao){
+  const meta = META[exId];
+  const equip = (meta && meta.e) || [];
+  if(equip.indexOf('maquina') !== -1 || equip.indexOf('smith') !== -1) return INCREMENTO_CARGA.maquina;
+  if(equip.indexOf('polia') !== -1) return INCREMENTO_CARGA.polia;
+  if(equip.indexOf('halter') !== -1) return INCREMENTO_CARGA.halter;
+  if(equip.indexOf('barra') !== -1 || equip.indexOf('barra_fixa') !== -1){
+    return regiao === 'inferior' ? INCREMENTO_CARGA.barra_inferior : INCREMENTO_CARGA.barra_superior;
+  }
+  return DEGRAU_MINIMO;
+}
+
+/* Carga de referência da sessão: a última série manda, porque é onde a
+   pessoa chegou depois de aquecer e ajustar. */
+function cargaDaSessao(sessao){
+  const pesos = (sessao.sets || []).map(s => parseFloat(s.w));
+  if(!pesos.length || pesos.some(isNaN)) return null;
+  return pesos[pesos.length - 1];
+}
+/* Fechou o treino todo? Sem setsPrescritos (treino antigo, de antes do campo
+   existir) não dá pra saber, e a resposta é sim: não faz sentido penalizar
+   retroativamente quem registrou o treino antes de o app guardar isso. */
+function fechouTodasAsSeries(sessao){
+  if(sessao.setsPrescritos == null) return true;
+  return (sessao.sets || []).length >= sessao.setsPrescritos;
+}
+function repMinima(sessao){
+  const reps = (sessao.sets || []).map(s => parseFloat(s.r));
+  return reps.length && !reps.some(isNaN) ? Math.min.apply(null, reps) : null;
+}
+
+/* Quantas sessões seguidas sem sair do lugar, olhando carga e repetição
+   juntas: subir repetição com a mesma carga é progresso, e não pode contar
+   como travado. */
+function sessoesTravadas(historico){
+  if(historico.length < 2) return 0;
+  let travadas = 0;
+  for(let i = 0; i + 1 < historico.length; i++){
+    const atual = historico[i], anterior = historico[i + 1];
+    const cargaAtual = cargaDaSessao(atual), cargaAnterior = cargaDaSessao(anterior);
+    const repAtual = repMinima(atual), repAnterior = repMinima(anterior);
+    if(cargaAtual == null || cargaAnterior == null || repAtual == null || repAnterior == null) break;
+    const avancou = cargaAtual > cargaAnterior || repAtual > repAnterior;
+    if(avancou) break;
+    travadas++;
+  }
+  return travadas + 1;   // a sessão mais recente também está no mesmo ponto
+}
+
+function progressaoDoExercicio(historico, prescricao){
+  if(!prescricao || prescricao.type !== 'reps') return null;
+  const faixa = parseFaixaReps(prescricao.reps);
+  if(!faixa) return null;
+  if(!historico || !historico.length) return {tipo: 'primeira'};
+
+  /* Se a pessoa já confirmou uma carga nova no fim do treino passado, é ela
+     que vale: a decisão dela vence o que o motor calcularia de novo. */
+  const confirmada = prescricao.cargaAlvo;
+  if(confirmada > 0){
+    const cargaUltima = cargaDaSessao(historico[0]);
+    if(cargaUltima != null && confirmada !== cargaUltima){
+      return {tipo: 'confirmada', cargaAtual: cargaUltima, cargaSugerida: confirmada, faixa: faixa,
+              repsFeitas: repMinima(historico[0])};
+    }
+  }
+
+  const ultima = historico[0];
+  const carga = cargaDaSessao(ultima);
+  const menorRep = repMinima(ultima);
+  if(carga == null || menorRep == null) return null;
+
+  const base = {cargaAtual: carga, repsFeitas: menorRep, faixa: faixa};
+
+  /* subir exige as duas coisas: treino fechado e topo da faixa em toda série */
+  if(fechouTodasAsSeries(ultima) && menorRep >= faixa.topo){
+    const passo = incrementoDoExercicio(prescricao.exId, prescricao.regiao);
+    const nova = Math.max(carga + DEGRAU_MINIMO, arredondar2_5(carga + passo));
+    return Object.assign({tipo: 'subir', cargaSugerida: nova, passo: passo}, base);
+  }
+
+  const travadas = sessoesTravadas(historico);
+  if(travadas >= SESSOES_ATE_ALIVIO){
+    const aliviada = Math.max(DEGRAU_MINIMO, arredondar2_5(carga * FATOR_ALIVIO));
+    if(aliviada < carga) return Object.assign({tipo: 'aliviar', cargaSugerida: aliviada, sessoes: travadas}, base);
+  }
+
+  return Object.assign({tipo: 'manter', cargaSugerida: carga}, base);
+}
+
 function sugerirCarga(historicoDoExercicio, prescricao){
   if(!prescricao || prescricao.type !== 'reps') return null;
   if(!historicoDoExercicio || !historicoDoExercicio.length) return null;
@@ -223,6 +352,23 @@ function sugerirCarga(historicoDoExercicio, prescricao){
 
   return {tipo:'manter', pesoAnterior:pesoAnterior, cargaSugerida:pesoAnterior, repsFeitas:repMinima};
 }
+function fmtCarga(n){ return (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',')) + ' kg'; }
+
+/* O texto do alívio nunca trata a estagnação como falha da pessoa: recuar a
+   carga de propósito é a manobra que destrava, não um castigo por não ter
+   conseguido. Quem lê isso cansado, no fim do treino, não precisa de
+   cobrança. */
+function formatarProgressao(p){
+  if(!p) return '';
+  if(p.tipo === 'primeira') return 'primeira vez: comece leve e ajuste na segunda série';
+  if(p.tipo === 'confirmada') return 'você marcou ' + fmtCarga(p.cargaSugerida) + ' pra hoje';
+  if(p.tipo === 'subir') return 'subir para ' + fmtCarga(p.cargaSugerida) + ' · você fechou ' + p.repsFeitas + ' em todas as séries';
+  if(p.tipo === 'aliviar') return 'aliviar para ' + fmtCarga(p.cargaSugerida) + ' · recuar um pouco agora costuma destravar a subida';
+  const faltam = p.faixa ? p.faixa.topo - p.repsFeitas : 0;
+  if(faltam > 0) return 'manter ' + fmtCarga(p.cargaSugerida) + (faltam === 1 ? ' · falta 1 repetição' : ' · faltam ' + faltam + ' repetições') + ' pra subir a carga';
+  return 'manter ' + fmtCarga(p.cargaSugerida) + ' e buscar mais repetições';
+}
+
 function formatarSugestao(sug){
   const fmt = n => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ','));
   if(sug.tipo === 'subir') return 'sugestão: ' + fmt(sug.cargaSugerida) + ' kg, você fechou ' + sug.repsFeitas + ' em todas as séries da última vez';
@@ -286,7 +432,7 @@ function openPreview(key){
   $('exlist').innerHTML = items.map((it, i) => {
     const def = defOf(it.ex);
     const last = lastPerformance(it.ex);
-    const sug = sugerirCarga(ultimasSessoesDoExercicio(it.ex), {reps: it.reps, type: def.type, regiao: regiaoDoExercicio(it.ex)});
+    const prog = progressaoDoExercicio(ultimasSessoesDoExercicio(it.ex), {exId: it.ex, reps: it.reps, type: def.type, regiao: regiaoDoExercicio(it.ex), cargaAlvo: cargaAlvoDoExercicio(it.ex)});
     return '<div class="excard">' +
       '<div class="cardinner">' +
       '<div class="exhead" style="cursor:default">' +
@@ -294,7 +440,7 @@ function openPreview(key){
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + fmtPrescricao(it, def, true) + ' · descanso ' + fmtRest(descansoDoExercicio(it)) + '</span>' +
         (last ? '<span class="exsummary">última vez: ' + summarizeSets(last.sets, def.type) + '</span>' : '') +
-        (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
+        (prog ? '<span class="suggestion' + (prog.tipo === 'aliviar' ? ' alivio' : '') + '">' + esc(formatarProgressao(prog)) + '</span>' : '') +
         '</span>' +
       '</div>' +
       '<div class="exfoot">' +
@@ -569,7 +715,7 @@ function cardHTML(item, pos){
   const def = defOf(item.ex);
   const log = session.log[item.uid] || [];
   const last = lastPerformance(item.ex);
-  const sug = sugerirCarga(ultimasSessoesDoExercicio(item.ex), {reps: item.reps, type: def.type, regiao: regiaoDoExercicio(item.ex)});
+  const prog = progressaoDoExercicio(ultimasSessoesDoExercicio(item.ex), {exId: item.ex, reps: item.reps, type: def.type, regiao: regiaoDoExercicio(item.ex), cargaAlvo: cargaAlvoDoExercicio(item.ex)});
   const u = unitOf(def.type);
   const doneCount = log.slice(0, item.sets).filter(s => s.done).length;
   const allDone = doneCount >= item.sets && item.sets > 0;
@@ -617,7 +763,7 @@ function cardHTML(item, pos){
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
         '<span class="target">' + fmtPrescricao(item, def, false) + ' · ' + fmtRest(descansoDoExercicio(item)) + '</span>' +
-        (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
+        (prog ? '<span class="suggestion' + (prog.tipo === 'aliviar' ? ' alivio' : '') + '">' + esc(formatarProgressao(prog)) + '</span>' : '') +
         (allDone && summary ? '<span class="exsummary">' + summary + '</span>' : '') +
       '</span>' +
       '<span class="prog">' + doneCount + '/' + item.sets + '</span>' +
@@ -1275,7 +1421,10 @@ async function finishWorkout(){
     doneSets += sets.length;
     if(def.type === 'reps') sets.forEach(s => { volume += (parseFloat(s.w) || 0) * (parseFloat(s.r) || 0); });
     if(def.type === 'cardio') sets.forEach(s => { cardioMin += parseFloat(s.r) || 0; });
-    exercises.push({exId: it.ex, name: def.name, type: def.type, sets: sets});
+    /* setsPrescritos guarda quantas series foram pedidas, nao quantas
+       sairam: e o que deixa o motor de progressao distinguir "fechou o
+       treino" de "parou no meio", que no historico ficavam iguais */
+    exercises.push({exId: it.ex, name: def.name, type: def.type, setsPrescritos: it.sets, sets: sets});
   });
 
   if(!doneSets){
@@ -1391,7 +1540,104 @@ function renderSummary(entry, previous, prs, todayCount){
   $('sum-editar-horario').onclick = () => editarDataTreino(entry.id, atualizado => {
     $('sum-editar-horario').querySelector('.v').textContent = Math.round(atualizado.duration / 60) + ' min';
   });
+  renderProgressaoDoResumo(entry);
   prepararCompartilhamento(entry, prs);
+}
+
+/* -------------------------------------------------------------------------
+   16b. CONFIRMAÇÃO DA PROGRESSÃO
+   O motor sugere, a pessoa decide. Nada de carga nova entra no próximo
+   treino sem este toque: mexer no peso do agachamento de alguém sem avisar
+   é o tipo de automatismo que faz perder a confiança no app inteiro.
+
+   Só aparece quando há decisão de verdade a tomar (subir ou aliviar). Quem
+   está no meio da faixa não vê bloco nenhum, porque não há o que confirmar.
+   ------------------------------------------------------------------------- */
+function sugestoesDeProgressao(entry){
+  return (entry.exercises || []).map(e => {
+    if(e.type !== 'reps') return null;
+    const prescricao = {exId: e.exId, reps: prescricaoDoExercicioNoTreino(entry, e.exId), type: e.type, regiao: regiaoDoExercicio(e.exId)};
+    if(!prescricao.reps) return null;
+    const p = progressaoDoExercicio(ultimasSessoesDoExercicio(e.exId), prescricao);
+    if(!p || (p.tipo !== 'subir' && p.tipo !== 'aliviar')) return null;
+    return {exId: e.exId, nome: e.name, tipo: p.tipo, de: p.cargaAtual, para: p.cargaSugerida, sessoes: p.sessoes};
+  }).filter(Boolean);
+}
+
+/* a faixa de repetição prescrita não vai pro histórico, então vem do programa
+   ou da sessão que acabou de terminar */
+function prescricaoDoExercicioNoTreino(entry, exId){
+  const doPrograma = (programItems(entry.key) || []).find(it => it.ex === exId);
+  if(doPrograma) return doPrograma.reps;
+  const def = defOf(exId);
+  return def && def.type === 'reps' ? '8-12' : null;
+}
+
+let progressaoPendente = [];
+
+function renderProgressaoDoResumo(entry){
+  const alvo = $('sum-progressao');
+  if(!alvo) return;
+  progressaoPendente = sugestoesDeProgressao(entry);
+  if(!progressaoPendente.length){ alvo.innerHTML = ''; alvo.style.display = 'none'; return; }
+
+  const temAlivio = progressaoPendente.some(p => p.tipo === 'aliviar');
+  alvo.style.display = '';
+  alvo.innerHTML =
+    '<div class="sumsection">Progressão</div>' +
+    '<div class="progcard">' +
+      '<div class="prog-intro">' +
+        (temAlivio
+          ? 'Uma carga vem se repetindo há algumas sessões. Recuar um pouco agora é o caminho mais curto pra voltar subindo.'
+          : 'Você fechou a faixa de repetições. Dá pra subir a carga no próximo treino.') +
+      '</div>' +
+      progressaoPendente.map((p, i) =>
+        '<div class="progitem' + (p.tipo === 'aliviar' ? ' alivio' : '') + '" data-prog="' + i + '">' +
+          '<div class="pg-n">' + esc(p.nome) + '</div>' +
+          '<div class="pg-c">' + fmtCarga(p.de) + ' <span class="pg-seta" aria-hidden="true">→</span> ' +
+            '<input class="pg-input" type="number" inputmode="decimal" step="0.5" min="0" value="' + p.para + '" ' +
+            'aria-label="Nova carga de ' + esc(p.nome) + '" data-prog-carga="' + i + '">' +
+            '<span class="pg-un">kg</span></div>' +
+        '</div>').join('') +
+      '<div class="prog-acao">' +
+        '<button class="btn-ghost" id="prog-manter">Manter como está</button>' +
+        '<button class="btn-primary" id="prog-confirmar">Confirmar</button>' +
+      '</div>' +
+    '</div>';
+
+  $('prog-confirmar').onclick = confirmarProgressao;
+  $('prog-manter').onclick = () => {
+    progressaoPendente = [];
+    alvo.innerHTML = '<div class="sumsection">Progressão</div><div class="progcard"><div class="prog-intro">Tudo certo, as cargas seguem como estão no próximo treino.</div></div>';
+  };
+}
+
+/* A carga confirmada vira o alvo do exercício, guardada por id e não por dia,
+   igual ao descanso: quem descobriu que o supino subiu quer isso em qualquer
+   treino que tenha supino, inclusive depois de refazer o programa. */
+async function confirmarProgressao(){
+  if(!progressaoPendente.length) return;
+  if(!settings.cargaAlvo) settings.cargaAlvo = {};
+  let aplicadas = 0;
+  progressaoPendente.forEach((p, i) => {
+    const campo = $('sum-progressao').querySelector('[data-prog-carga="' + i + '"]');
+    const valor = campo ? parseFloat(campo.value) : p.para;
+    if(!(valor > 0)) return;
+    settings.cargaAlvo[p.exId] = valor;
+    aplicadas++;
+  });
+  await Store.set('settings', settings);
+  const alvo = $('sum-progressao');
+  alvo.innerHTML = '<div class="sumsection">Progressão</div><div class="progcard confirmado">' +
+    '<div class="prog-intro">Anotado. ' + aplicadas + (aplicadas === 1 ? ' carga nova aparece' : ' cargas novas aparecem') + ' no próximo treino.</div></div>';
+  progressaoPendente = [];
+}
+
+/* Carga que a pessoa confirmou pra este exercício, se houver. Entra como
+   sugestão no card do próximo treino, nunca preenchida sozinha no campo. */
+function cargaAlvoDoExercicio(exId){
+  const alvo = (settings.cargaAlvo || {})[exId];
+  return alvo > 0 ? alvo : null;
 }
 
 /* -------------------------------------------------------------------------
@@ -1778,6 +2024,7 @@ export {
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
   compartilharResumo, getShareFile, montarCartaoResumo, recordesDoTreino,
+  progressaoDoExercicio, formatarProgressao, cargaAlvoDoExercicio, incrementoDoExercicio,
   prepararCompartilhamentoDoHistorico,
   usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao

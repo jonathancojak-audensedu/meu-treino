@@ -31,6 +31,7 @@ import {
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
   compartilharResumo, getShareFile, montarCartaoResumo, recordesDoTreino,
+  progressaoDoExercicio, formatarProgressao, cargaAlvoDoExercicio, incrementoDoExercicio,
   prepararCompartilhamentoDoHistorico,
   usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao
@@ -608,6 +609,11 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v51', itens: [
+    'O app agora puxa sua evolução: fechou a faixa de repetições, ele sugere subir a carga no fim do treino',
+    'Depois de algumas sessões no mesmo ponto, sugere aliviar a carga pra destravar',
+    'Toda sugestão é editável e só vale depois que você confirmar'
+  ]},
   {versao: 'meu-treino-v50', itens: [
     'Leg press, hack machine, peck deck e outros exercícios de máquina e cabo voltaram a aparecer nos treinos gerados',
     'Quem marcou dor recebe mais exercício guiado, que é mais seguro'
@@ -1133,6 +1139,8 @@ window.MT = {
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
   metricasDaHome: metricasDaHome, graficoDaHome: graficoDaHome, metricaSugerida: metricaSugerida,
+  progressao: progressaoDoExercicio, formatarProgressao: formatarProgressao,
+  cargaAlvo: cargaAlvoDoExercicio, incrementoCarga: incrementoDoExercicio,
   FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS, descricaoDoDia: descricaoDoDia, notaDeFrequencia: notaDeFrequencia,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },

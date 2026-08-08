@@ -200,6 +200,24 @@
   .exfoot.perigo{border-top:1px dashed var(--line); padding-top:10px; margin-top:2px;}
   /* botões da foto do card de compartilhar, logo acima da barra de ações */
   .sumfotobar{display:flex; gap:8px; flex-wrap:wrap; padding:0 16px;}
+  /* bloco de confirmacao da progressao, no fim do resumo */
+  .sumprogressao{padding:0 16px 4px;}
+  .progcard{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 16px;}
+  .progcard.confirmado{border-color:var(--accent-dim);}
+  .prog-intro{font-size:13px; color:var(--text-dim); line-height:1.5;}
+  .progitem{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--line);}
+  .progitem:last-of-type{border-bottom:none;}
+  .progitem .pg-n{font-family:var(--display); font-weight:600; font-size:14px; flex:1;}
+  .progitem .pg-c{display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:13px; color:var(--text-dim); white-space:nowrap;}
+  .progitem .pg-seta{color:var(--accent);}
+  .progitem .pg-un{color:var(--text-faint); font-size:12px;}
+  .pg-input{width:62px; background:var(--bg-elev); border:1px solid var(--line-strong); border-radius:8px; color:var(--accent); font-family:var(--mono); font-size:15px; font-weight:700; padding:8px 6px; text-align:center; min-height:40px;}
+  .pg-input:focus{outline:none; border-color:var(--accent);}
+  /* alivio nao usa vermelho: recuar carga e estrategia, nao erro */
+  .progitem.alivio .pg-seta{color:var(--text-dim);}
+  .prog-acao{display:flex; gap:10px; margin-top:14px;}
+  .prog-acao button{flex:1; min-height:46px; border-radius:var(--radius); font-family:var(--display); font-weight:600; font-size:14px; cursor:pointer;}
+  .suggestion.alivio{color:var(--text-dim);}
   .noteblock{font-size:12.5px; color:var(--text-dim); line-height:1.55; padding:0 16px 14px; display:none;}
   .noteblock.open{display:block;}
 

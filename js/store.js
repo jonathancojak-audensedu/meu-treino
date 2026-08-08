@@ -71,13 +71,35 @@ const Store = {
    tocados: uma copia bruta vai para a chave de resgate antes de qualquer
    escrita, e a pessoa e avisada que existe uma copia recuperavel.
    ------------------------------------------------------------------------- */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const CHAVES_DADOS = ['history', 'profile', 'corpo', 'overrides', 'custom_ex', 'program', 'favoritos', 'settings', 'avatar'];
 
 const MIGRACOES = {
   // de "sem versao" (quem instalou antes deste recurso existir) para 1:
   // so passa a registrar a versao, o formato dos dados em si nao muda
-  1: async dados => dados
+  1: async dados => dados,
+
+  /* 2: cada exercicio do historico passa a guardar quantas series foram
+     prescritas, nao so as concluidas. O motor de progressao precisa disso
+     pra saber se a pessoa fechou o treino todo ou parou no meio, e sem o
+     campo os dois casos ficavam identicos no historico.
+
+     Treino antigo nao tem como saber quantas series foram pedidas na epoca,
+     entao entra como null, que o motor le como "nao sei" e trata sem
+     penalizar. Nada e apagado nem reescrito: so o campo novo e acrescentado,
+     e todo o resto do treino passa intacto. */
+  2: async dados => {
+    if(!Array.isArray(dados.history)) return dados;
+    const history = dados.history.map(treino => {
+      if(!treino || !Array.isArray(treino.exercises)) return treino;
+      return Object.assign({}, treino, {
+        exercises: treino.exercises.map(ex => (
+          ex && ex.setsPrescritos === undefined ? Object.assign({}, ex, {setsPrescritos: null}) : ex
+        ))
+      });
+    });
+    return Object.assign({}, dados, {history: history});
+  }
 };
 
 async function lerDadosBrutos(){
