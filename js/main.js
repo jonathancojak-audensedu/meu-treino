@@ -582,6 +582,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v47', itens: [
+    'Corrige a tela inicial abrindo pela metade logo depois de uma atualização'
+  ]},
   {versao: 'meu-treino-v46', itens: [
     'Home virou uma tela de incentivo: saudação que muda a cada abertura, o quanto falta pra fechar sua semana, a faixa dos sete dias e um gráfico de evolução'
   ]},
@@ -968,22 +971,51 @@ async function boot(){
     await Store.del('active_session');
   }
 
-  renderHome();
-  renderHistory();
-  renderAvatar();
-  updateStorageLabel();
-  atualizarAjustes();
-  prepararFeedback();
+  /* O service worker é registrado ANTES de desenhar qualquer tela, e nunca
+     depois. Se o registro ficar no fim e a tela quebrar no meio do caminho,
+     a versão nova nunca chega e o aparelho fica preso na versão quebrada
+     pra sempre, sem saída pela própria interface. */
+  registrarServiceWorker();
+
+  /* Uma tela que quebra não pode derrubar o resto do boot: sem isto, um erro
+     ao desenhar a home levava junto o histórico, o avatar e os ajustes. */
+  try{
+    renderHome();
+    renderHistory();
+    renderAvatar();
+    updateStorageLabel();
+    atualizarAjustes();
+    prepararFeedback();
+  }catch(e){
+    registrarErro({tipo: 'erro', mensagem: 'falha ao desenhar a tela inicial: ' + (e && e.message ? e.message : e), origem: 'boot'});
+    toast('Algo não carregou direito. Feche e abra o app de novo.');
+  }
+
   if(!profile) abrirOnboarding(false);
   else avisosDeProtecaoDeDados();
   if(!migracao.ok){
     toast('Não consegui atualizar o formato dos seus dados, mas nada foi apagado. Existe uma cópia de segurança salva no aparelho. Avise pelo botão de feedback em Ajustes.');
   }
 
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-  }
   if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+}
+
+/* O index.html vem da rede (pra atualizar rápido) mas os módulos js vêm do
+   cache (pra abrir rápido offline). Numa atualização isso pode misturar
+   html novo com js antigo por uma carga, e aí a tela quebra. Quando o
+   service worker novo assume o controle, recarrega uma vez pra alinhar os
+   dois. Só na troca de versão, não na primeira instalação, senão a
+   primeiríssima abertura recarregaria à toa. */
+function registrarServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+  const jaTinhaControlador = !!navigator.serviceWorker.controller;
+  let recarregando = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(!jaTinhaControlador || recarregando) return;
+    recarregando = true;
+    location.reload();
+  });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 async function obterVersaoApp(){
