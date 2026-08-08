@@ -200,11 +200,14 @@ function metricasDaHome(lista, perfil, agora){
   const inicioSemana = inicioDaSemana(quando);
   const meta = perfil && Number(perfil.dias) > 0 ? Number(perfil.dias) : null;
   const u = treinos[0];
+  const feitos = treinos.filter(h => new Date(h.date) >= inicioSemana).length;
   return {
     vazio: false,
     sequencia: sequenciaDeSemanas(treinos, quando),
-    treinosSemana: treinos.filter(h => new Date(h.date) >= inicioSemana).length,
+    treinosSemana: feitos,
     metaSemanal: meta,
+    faltam: meta ? Math.max(0, meta - feitos) : null,
+    diasDaSemana: diasTreinadosNaSemana(treinos, quando),
     recordes: totalDeRecordes(treinos),
     total: treinos.length,
     ultimo: {
@@ -214,6 +217,92 @@ function metricasDaHome(lista, perfil, agora){
       volume: u.volume || 0,
       series: u.setsDone || 0
     }
+  };
+}
+
+/* Faixa da semana: sete posições, segunda a domingo, dizendo em quais delas
+   houve treino. Mostra o ritmo da semana de relance, sem precisar abrir o
+   calendário. */
+function diasTreinadosNaSemana(lista, agora){
+  const inicio = inicioDaSemana(agora || new Date());
+  const rotulos = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+  const hojeIdx = Math.floor((new Date(agora || Date.now()).setHours(0,0,0,0) - inicio) / 86400000);
+  return rotulos.map((r, i) => {
+    const dia = new Date(inicio.getTime() + i * 86400000);
+    const fim = new Date(dia.getTime() + 86400000);
+    const treinou = (lista || []).some(h => {
+      const d = new Date(h.date);
+      return d >= dia && d < fim;
+    });
+    return {rotulo: r, treinou: treinou, hoje: i === hojeIdx, futuro: i > hojeIdx};
+  });
+}
+
+/* -------------------------------------------------------------------------
+   Métrica do gráfico da home
+   A escolha é feita uma vez, pelo dado que a pessoa realmente registra, e
+   depois fica gravada: um gráfico que troca de assunto sozinho no meio do
+   uso não dá pra comparar com o que se viu na semana passada. Quem quiser
+   outra métrica troca pelo botão, e a troca também fica gravada.
+   ------------------------------------------------------------------------- */
+const METRICAS_HOME = {
+  volume: {chave:'volume', titulo:'Volume por semana', unidade:'kg', curto:'Volume'},
+  series: {chave:'series', titulo:'Séries por semana', unidade:'séries', curto:'Séries'},
+  treinos: {chave:'treinos', titulo:'Treinos por semana', unidade:'treinos', curto:'Treinos'}
+};
+
+/* volume só existe pra quem registra carga: quem treina em casa ou com peso
+   corporal marca repetição sem kg e teria um gráfico rente ao chão */
+function metricaSugerida(lista){
+  const treinos = lista || [];
+  if(treinos.some(h => (h.volume || 0) > 0)) return 'volume';
+  if(treinos.some(h => (h.setsDone || 0) > 0)) return 'series';
+  return 'treinos';
+}
+
+function valorDoTreino(h, metrica){
+  if(metrica === 'volume') return h.volume || 0;
+  if(metrica === 'series') return h.setsDone || 0;
+  return 1;
+}
+
+/* uma barra por semana, da mais antiga pra atual, sempre com as semanas
+   vazias no meio: pular semana sem treino esconderia exatamente a parada
+   que a pessoa precisa enxergar */
+function serieSemanal(lista, metrica, semanas, agora){
+  const quantas = semanas || 8;
+  const quando = agora ? new Date(agora) : new Date();
+  const atual = inicioDaSemana(quando);
+  const barras = [];
+  for(let i = quantas - 1; i >= 0; i--){
+    const ini = new Date(atual.getTime() - i * SEMANA_MS);
+    const fim = new Date(ini.getTime() + SEMANA_MS);
+    const daSemana = (lista || []).filter(h => {
+      const d = new Date(h.date);
+      return d >= ini && d < fim;
+    });
+    barras.push({
+      inicio: ini.toISOString(),
+      valor: daSemana.reduce((a, h) => a + valorDoTreino(h, metrica), 0),
+      treinos: daSemana.length,
+      atual: i === 0
+    });
+  }
+  return barras;
+}
+
+/* o gráfico só diz alguma coisa com pelo menos duas semanas pra comparar */
+function graficoDaHome(lista, metrica, agora){
+  const escolhida = METRICAS_HOME[metrica] ? metrica : metricaSugerida(lista);
+  const barras = serieSemanal(lista, escolhida, 8, agora);
+  const comDado = barras.filter(b => b.valor > 0).length;
+  return {
+    metrica: escolhida,
+    titulo: METRICAS_HOME[escolhida].titulo,
+    unidade: METRICAS_HOME[escolhida].unidade,
+    barras: barras,
+    suficiente: comDado >= 2,
+    total: barras.reduce((a, b) => a + b.valor, 0)
   };
 }
 
@@ -396,5 +485,6 @@ export {
   history, setHistory, saveHistory, renderHistory, editarDataTreino, deleteHistory,
   exerciciosComHistorico, serieTemporalDoExercicio, showHistoryTab, historyTab, calViewDate,
   openCalendar, renderCalendar,
-  metricasDaHome, sequenciaDeSemanas, totalDeRecordes
+  metricasDaHome, sequenciaDeSemanas, totalDeRecordes,
+  graficoDaHome, serieSemanal, metricaSugerida, diasTreinadosNaSemana, METRICAS_HOME
 };

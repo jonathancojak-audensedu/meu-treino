@@ -15,7 +15,7 @@ import { $, esc, mq, openBackdrop, askConfirm, toast, fecharSheetAtual, invalida
 import {
   history, setHistory, saveHistory, renderHistory, editarDataTreino, deleteHistory,
   exerciciosComHistorico, serieTemporalDoExercicio, showHistoryTab, historyTab, calViewDate,
-  openCalendar, renderCalendar, metricasDaHome
+  openCalendar, renderCalendar, metricasDaHome, graficoDaHome, metricaSugerida
 } from './history.js';
 import {
   overrides, setOverrides, customEx, setCustomEx, favoritos, setFavoritos, session, setSession,
@@ -192,36 +192,193 @@ function renderHome(){
   updateTrainingBadge();
 }
 
-/* Painel de boas-vindas: três números e uma linha com o último treino. Quem
-   ainda não treinou não vê três zeros, vê um convite, porque zero em destaque
-   na primeira abertura parece que o app está quebrado. */
+/* -------------------------------------------------------------------------
+   PAINEL DA HOME
+   Tela de incentivo, não de escolher treino: saudação, o quanto falta pra
+   fechar a semana, a faixa dos sete dias, o gráfico e só então o próximo
+   treino como ação. Quem nunca treinou vê convite no lugar de zero, porque
+   número zerado em destaque na primeira abertura parece app quebrado.
+   ------------------------------------------------------------------------- */
+
+/* Sorteada a cada abertura, como uma pessoa que te cumprimenta diferente
+   toda vez. Evita registro de coach agressivo de propósito: quem está
+   voltando depois de parar é justamente quem menos precisa de cobrança. */
+const FRASES_BOAS_VINDAS = [
+  'Constância vence intensidade. Sempre.',
+  'Um pouco todo dia vira muito no fim do ano.',
+  'A diferença entre quem chega e quem não chega é voltar amanhã.',
+  'Menos motivação, mais rotina.',
+  'Sem pressa, sem pausa.',
+  'Você não precisa estar animado, só precisa começar.',
+  'Você já fez a parte difícil: apareceu.',
+  'Todo treino conta, principalmente o que você não estava a fim de fazer.',
+  'O melhor treino é o que você faz de verdade.',
+  'A barra não sabe se você dormiu mal.',
+  'Progresso não é linear, mas é acumulativo.',
+  'Repetição por repetição, você chega lá.',
+  'O treino difícil de hoje é o aquecimento de amanhã.',
+  'Seu eu de daqui a seis meses agradece.',
+  'Melhor que ontem já é vitória.',
+  'Cada série registrada é uma promessa cumprida.',
+  'Treino feito é treino que ninguém tira de você.',
+  'Treino registrado é evolução que você vê crescer.',
+  'Levanta, que o ferro não levanta sozinho.',
+  'Hoje é um bom dia pra ficar um pouco mais forte.',
+  'Comece leve, termine inteiro.',
+  'Consistência constrói mais que exagero.',
+  'Ninguém se arrepende de ter treinado.',
+  'Força se constrói devagar e some rápido. Bora manter.'
+];
+/* sorteada uma vez por abertura do app, não a cada render: trocar de frase
+   ao voltar do histórico daria a impressão de que a tela piscou */
+const FRASE_DA_VEZ = FRASES_BOAS_VINDAS[Math.floor(Math.random() * FRASES_BOAS_VINDAS.length)];
+
+function saudacaoDoHorario(){
+  const h = new Date().getHours();
+  return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+}
+
+function textoDaMeta(m){
+  if(!m.metaSemanal) return m.treinosSemana === 1 ? '1 treino registrado esta semana' : m.treinosSemana + ' treinos registrados esta semana';
+  if(m.treinosSemana === 0) return 'Semana nova. Bora abrir com o pé direito?';
+  if(m.faltam === 0 && m.treinosSemana === m.metaSemanal) return 'Semana fechada. O que vier agora é bônus';
+  if(m.faltam === 0) return 'Você passou da meta em ' + (m.treinosSemana - m.metaSemanal) + ' treino' + (m.treinosSemana - m.metaSemanal > 1 ? 's' : '');
+  return m.faltam === 1 ? 'Falta 1 treino pra fechar sua semana' : 'Faltam ' + m.faltam + ' treinos pra fechar sua semana';
+}
+
+/* Barras em SVG na mão: uma por semana, altura proporcional à maior. Volume
+   semanal é grandeza discreta, então barra lê melhor que linha. */
+function svgBarrasSemanais(g){
+  const W = 320, H = 132, padL = 6, padR = 6, padT = 10, padB = 20;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxV = Math.max.apply(null, g.barras.map(b => b.valor)) || 1;
+  const larguraSlot = plotW / g.barras.length;
+  const largura = Math.min(28, larguraSlot * 0.62);
+
+  const barras = g.barras.map((b, i) => {
+    const alturaCheia = (b.valor / maxV) * plotH;
+    // barra some quando a semana e vazia; um tracinho no chao mostra a lacuna
+    const altura = b.valor > 0 ? Math.max(3, alturaCheia) : 2;
+    const x = padL + larguraSlot * i + (larguraSlot - largura) / 2;
+    const y = padT + plotH - altura;
+    const classe = b.valor > 0 ? (b.atual ? 'b atual' : 'b') : 'b vazia';
+    return '<rect class="' + classe + '" x="' + x.toFixed(1) + '" y="' + y.toFixed(1) +
+      '" width="' + largura.toFixed(1) + '" height="' + altura.toFixed(1) + '" rx="3"></rect>';
+  }).join('');
+
+  const base = '<line class="eixo" x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' + (padT + plotH) + '"></line>';
+  const legenda =
+    '<text class="lg" x="' + padL + '" y="' + (H - 5) + '" text-anchor="start">8 semanas atrás</text>' +
+    '<text class="lg" x="' + (W - padR) + '" y="' + (H - 5) + '" text-anchor="end">esta semana</text>';
+
+  return '<svg class="barchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
+    'aria-label="' + esc(g.titulo + ', últimas 8 semanas') + '">' + base + barras + legenda + '</svg>';
+}
+
+function fmtNumeroGrande(n, unidade){
+  if(unidade === 'kg' && n >= 1000) return (n / 1000).toFixed(1).replace('.', ',') + ' t';
+  return n + (unidade === 'kg' ? ' kg' : '');
+}
+
 function renderPainelHome(){
   const m = metricasDaHome(history, profile, new Date());
-  const el = $('homestats');
-  el.classList.toggle('vazio', m.vazio);
+  const nome = profile && profile.nome ? profile.nome : null;
+
+  $('home-saudacao').textContent = saudacaoDoHorario() + (nome ? ', ' + nome : '');
+  $('home-frase').textContent = FRASE_DA_VEZ;
 
   if(m.vazio){
-    el.innerHTML =
-      '<div class="homevazio">' +
-        '<div class="hv-t">' + (profile && profile.nome ? 'Bora começar, ' + esc(profile.nome) + '?' : 'Bora começar?') + '</div>' +
-        '<div class="hv-s">Seu primeiro treino começa a sequência. Escolha um dos treinos abaixo e o resto aparece sozinho aqui.</div>' +
+    $('home-meta').innerHTML =
+      '<div class="meta-t">Sua primeira semana começa quando você quiser</div>' +
+      '<div class="meta-s">Registre um treino e esta tela passa a mostrar seu ritmo.</div>';
+    $('home-semana').innerHTML = '';
+    $('home-semana').style.display = 'none';
+    $('home-grafico').innerHTML =
+      '<div class="gvazio">' +
+        '<div class="gv-i" aria-hidden="true">▁▃▅█</div>' +
+        '<div class="gv-t">Seu gráfico aparece aqui</div>' +
+        '<div class="gv-s">A partir do segundo treino dá pra comparar semana com semana.</div>' +
       '</div>';
-    $('home-ultimo').style.display = 'none';
+    $('home-mini').innerHTML = '';
+    $('home-mini').style.display = 'none';
+    renderProximoTreino(true);
     return;
   }
 
-  const stat = (valor, rotulo) => '<div class="homestat"><div class="v">' + valor + '</div><div class="l">' + rotulo + '</div></div>';
-  const semana = m.metaSemanal ? m.treinosSemana + '<span class="de">/' + m.metaSemanal + '</span>' : String(m.treinosSemana);
-  el.innerHTML =
-    stat(m.sequencia, m.sequencia === 1 ? 'Semana seguida' : 'Semanas seguidas') +
-    stat(semana, 'Esta semana') +
-    stat(m.recordes, m.recordes === 1 ? 'Recorde' : 'Recordes');
+  $('home-semana').style.display = '';
+  $('home-mini').style.display = '';
 
-  const partes = [daysAgo(m.ultimo.data)];
-  if(m.ultimo.minutos) partes.push(m.ultimo.minutos + ' min');
-  if(m.ultimo.volume) partes.push(m.ultimo.volume + ' kg');
-  $('home-ultimo').innerHTML = '<span class="ut">' + esc(m.ultimo.nome) + '</span> · ' + esc(partes.join(' · '));
-  $('home-ultimo').style.display = '';
+  const pct = m.metaSemanal ? Math.min(100, Math.round((m.treinosSemana / m.metaSemanal) * 100)) : 0;
+  $('home-meta').innerHTML =
+    '<div class="meta-topo">' +
+      '<span class="meta-l">Esta semana</span>' +
+      '<span class="meta-n">' + m.treinosSemana + (m.metaSemanal ? '<span class="de">/' + m.metaSemanal + '</span>' : '') + '</span>' +
+    '</div>' +
+    (m.metaSemanal ? '<div class="barra" role="progressbar" aria-valuenow="' + m.treinosSemana + '" aria-valuemin="0" aria-valuemax="' + m.metaSemanal + '">' +
+      '<div class="barra-fill" style="width:' + pct + '%"></div></div>' : '') +
+    '<div class="meta-s">' + esc(textoDaMeta(m)) + '</div>';
+
+  $('home-semana').setAttribute('aria-label',
+    'Dias treinados nesta semana: ' + (m.diasDaSemana.filter(d => d.treinou).length || 'nenhum'));
+  $('home-semana').innerHTML = m.diasDaSemana.map(d =>
+    '<div class="dia' + (d.treinou ? ' feito' : '') + (d.hoje ? ' hoje' : '') + (d.futuro ? ' futuro' : '') + '">' +
+      '<span class="dm" aria-hidden="true">' + d.rotulo + '</span>' +
+      '<span class="dp" aria-hidden="true"></span>' +
+    '</div>').join('');
+
+  const g = graficoDaHome(history, settings.graficoHome, new Date());
+  // grava a métrica escolhida pelo dado: assim ela não muda sozinha depois,
+  // quando a pessoa começar (ou parar) de registrar carga
+  if(settings.graficoHome !== g.metrica){
+    settings.graficoHome = g.metrica;
+    Store.set('settings', settings);
+  }
+  $('home-grafico').innerHTML =
+    '<div class="g-topo">' +
+      '<div><div class="g-t">' + esc(g.titulo) + '</div>' +
+      '<div class="g-s">' + (g.suficiente ? esc(fmtNumeroGrande(g.total, g.unidade) + ' nas últimas 8 semanas') : 'ainda juntando dado') + '</div></div>' +
+      '<button class="g-trocar" id="btn-trocar-grafico" type="button">trocar</button>' +
+    '</div>' +
+    (g.suficiente ? svgBarrasSemanais(g) :
+      '<div class="gvazio">' +
+        '<div class="gv-t">Falta uma semana pra comparar</div>' +
+        '<div class="gv-s">Com duas semanas registradas o gráfico aparece aqui.</div>' +
+      '</div>');
+  $('btn-trocar-grafico').onclick = trocarMetricaDoGrafico;
+
+  const mini = (v, l) => '<div class="mini"><span class="mv">' + v + '</span><span class="ml">' + l + '</span></div>';
+  $('home-mini').innerHTML =
+    mini(m.sequencia, m.sequencia === 1 ? 'semana seguida' : 'semanas seguidas') +
+    mini(m.recordes, m.recordes === 1 ? 'recorde' : 'recordes') +
+    mini(m.total, m.total === 1 ? 'treino' : 'treinos');
+
+  renderProximoTreino(false);
+}
+
+/* trocar é sempre manual e fica gravado, nunca automático */
+async function trocarMetricaDoGrafico(){
+  const ordem = ['volume', 'series', 'treinos'];
+  const atual = settings.graficoHome || metricaSugerida(history);
+  settings.graficoHome = ordem[(ordem.indexOf(atual) + 1) % ordem.length];
+  await Store.set('settings', settings);
+  renderPainelHome();
+}
+
+/* O próximo treino é a ação principal da tela, então ganha card próprio com
+   o botão de começar, em vez de ser mais uma linha na lista. */
+function renderProximoTreino(primeiraVez){
+  const key = suggestedKey();
+  const w = byKey(key);
+  if(!w){ $('home-proximo').innerHTML = ''; return; }
+  const n = programItems(key).length;
+  const ultimo = history.find(h => h.key === key);
+  $('home-proximo').innerHTML =
+    '<button class="proxcard" data-open="' + key + '">' +
+      '<span class="px-tag">' + esc(w.tag) + (primeiraVez ? ' · comece por aqui' : '') + '</span>' +
+      '<span class="px-nome">' + esc(w.name) + '</span>' +
+      '<span class="px-meta">' + esc(w.meta) + ' · ' + n + ' exercícios</span>' +
+      '<span class="px-acao">' + (primeiraVez ? 'Começar meu primeiro treino' : 'Começar') + ' ›</span>' +
+    '</button>';
 }
 
 function atualizarCabecalhoHome(){
@@ -231,10 +388,9 @@ function atualizarCabecalhoHome(){
     nota.textContent = '';
     return;
   }
-  const hora = new Date().getHours();
-  const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
-  sub.textContent = saudacao + ', ' + profile.nome + ' · ' + (ROTULOS.objetivo[profile.objetivo] || '') +
-    ' · ' + profile.dias + 'x por semana';
+  /* a saudação com o nome agora é o título do painel, logo abaixo: repetir
+     aqui deixaria "Bom dia, Jonathan" duas vezes na mesma dobra */
+  sub.textContent = (ROTULOS.objetivo[profile.objetivo] || '') + ' · ' + profile.dias + 'x por semana';
 
   const d = Number(profile.dias);
   if(d >= 6) nota.textContent = 'Com 6 dias você fecha o ciclo inteiro na semana. Se acordar quebrado, trocar um dia por descanso rende mais que insistir.';
@@ -426,6 +582,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v46', itens: [
+    'Home virou uma tela de incentivo: saudação que muda a cada abertura, o quanto falta pra fechar sua semana, a faixa dos sete dias e um gráfico de evolução'
+  ]},
   {versao: 'meu-treino-v45', itens: [
     'Home virou um painel: sequência de semanas treinando, treinos da semana contra a sua meta e recordes batidos'
   ]},
@@ -534,7 +693,7 @@ async function abrirDiagnostico(){
 /* -------------------------------------------------------------------------
    20. EVENTOS
    ------------------------------------------------------------------------- */
-$('daylist').addEventListener('click', e => {
+function abrirTreinoDaHome(e){
   const free = e.target.closest('[data-free]');
   const btn = e.target.closest('[data-open]');
   if(!free && !btn) return;
@@ -545,7 +704,10 @@ $('daylist').addEventListener('click', e => {
   }
   if(free) return startFreeSession();
   openPreview(btn.dataset.open);
-});
+}
+$('daylist').addEventListener('click', abrirTreinoDaHome);
+/* o card do próximo treino vive fora da lista, mas abre do mesmo jeito */
+$('home-proximo').addEventListener('click', abrirTreinoDaHome);
 
 $('exlist').addEventListener('input', onInput);
 $('exlist').addEventListener('keydown', onKeydown);
@@ -900,7 +1062,8 @@ window.MT = {
   exportBackup: exportBackup, importBackup: importBackup,
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
-  metricasDaHome: metricasDaHome,
+  metricasDaHome: metricasDaHome, graficoDaHome: graficoDaHome, metricaSugerida: metricaSugerida,
+  FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers

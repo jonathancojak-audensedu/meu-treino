@@ -108,7 +108,8 @@ const todoJs = fs.readdirSync(jsDir)
   check('dias salvos como numero', pf.dias === 4);
   check('dores salvas', Array.isArray(pf.dores) && pf.dores.indexOf('ombro') !== -1);
   check('prioridade com 2 itens', pf.prioridade.length === 2);
-  check('home fala com a pessoa', /Jonathan/.test($('home-sub').textContent));
+  // a saudacao com o nome virou o titulo do painel; o sub ficou so com objetivo e frequencia
+  check('home fala com a pessoa', /Jonathan/.test($('home-saudacao').textContent));
   check('home cita a frequencia', $('home-sub').textContent.includes('4x por semana'));
   check('nota da home adaptada aos 4 dias', $('home-nota').textContent.includes('Upper A, Lower A'));
   check('ajustes resume o perfil', $('perfil-resumo').textContent.includes('Massa muscular'));
@@ -125,7 +126,7 @@ const todoJs = fs.readdirSync(jsDir)
   const w2 = await boot(dump);
   const $2 = seletor(w2);
   check('onboarding nao reaparece', $2('onboarding').hidden === true);
-  check('home ja personalizada', /Jonathan/.test($2('home-sub').textContent));
+  check('home ja personalizada', /Jonathan/.test($2('home-saudacao').textContent));
 
   console.log('\n== editar perfil pelos ajustes ==');
   $2('btn-perfil').click();

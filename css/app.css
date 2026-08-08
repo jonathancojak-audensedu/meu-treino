@@ -70,19 +70,67 @@
   .daycard .last{font-size:11.5px; color:var(--text-faint); font-family:var(--mono); margin-top:2px;}
   .daycard .arrow{color:var(--text-faint); font-size:22px;}
   .divider-note{margin:18px 20px 4px; font-size:12.5px; color:var(--text-dim); line-height:1.55; background:var(--card-2); border-radius:10px; padding:12px 14px; border:1px solid var(--line);}
-  .homestats{display:flex; gap:10px; padding:0 16px 14px;}
-  .homestat{flex:1; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px;}
-  .homestat .v{font-family:var(--mono); font-size:18px; font-weight:700;}
-  .homestat .l{font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-top:2px;}
-  .homestat .v .de{color:var(--text-faint); font-size:14px;}
-  /* boas-vindas de quem ainda nao treinou: ocupa a faixa inteira dos numeros,
-     porque tres zeros em destaque na primeira abertura parecem app quebrado */
-  .homestats.vazio{display:block;}
-  .homevazio{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px;}
-  .homevazio .hv-t{font-family:var(--display); font-weight:600; font-size:15px;}
-  .homevazio .hv-s{font-size:12.5px; color:var(--text-dim); line-height:1.5; margin-top:5px;}
-  .homeultimo{padding:0 16px 14px; margin-top:-4px; font-size:12.5px; color:var(--text-dim); font-family:var(--mono);}
-  .homeultimo .ut{color:var(--text); font-family:var(--display); font-weight:600;}
+  /* ---------- home: painel de incentivo ----------
+     A ordem da tela é a ordem da conversa: quem é você, como está sua
+     semana, como você vem evoluindo, e só então o que treinar hoje. */
+  .hometop{padding-bottom:6px;}
+  .hero{padding:2px 20px 20px;}
+  .hero-saud{font-family:var(--display); font-weight:700; font-size:26px; line-height:1.15; letter-spacing:-.01em;}
+  .hero-frase{font-size:14px; color:var(--text-dim); line-height:1.5; margin-top:8px; max-width:34ch;}
+
+  .metacard{margin:0 16px 10px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 16px;}
+  .metacard .meta-topo{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .metacard .meta-l{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.07em;}
+  .metacard .meta-n{font-family:var(--mono); font-size:24px; font-weight:700; color:var(--accent); line-height:1;}
+  .metacard .meta-n .de{color:var(--text-faint); font-size:15px; font-weight:400;}
+  .metacard .barra{height:7px; border-radius:5px; background:var(--bg-elev); overflow:hidden; margin-top:11px;}
+  .metacard .barra-fill{height:100%; background:var(--accent); border-radius:5px; transition:width .3s;}
+  .metacard .meta-s{font-size:13px; color:var(--text); margin-top:10px; line-height:1.45;}
+  .metacard .meta-t{font-family:var(--display); font-weight:600; font-size:15px;}
+
+  /* faixa da semana: sete marcadores, sempre visível sem rolar */
+  .semanafaixa{display:flex; gap:6px; margin:0 16px 16px;}
+  .semanafaixa .dia{flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .semanafaixa .dm{font-size:10.5px; color:var(--text-faint); font-family:var(--mono);}
+  .semanafaixa .dp{width:100%; height:5px; border-radius:3px; background:var(--line);}
+  .semanafaixa .feito .dp{background:var(--accent);}
+  .semanafaixa .feito .dm{color:var(--accent-dim);}
+  .semanafaixa .futuro .dp{background:var(--bg-elev);}
+  .semanafaixa .hoje .dm{color:var(--text); font-weight:700;}
+  .semanafaixa .hoje .dp{box-shadow:0 0 0 1px var(--line-strong);}
+
+  /* gráfico: elemento forte da tela, com respiro em volta */
+  .graficocard{margin:0 16px 16px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:15px 14px 8px;}
+  .graficocard .g-topo{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:0 2px 6px;}
+  .graficocard .g-t{font-family:var(--display); font-weight:600; font-size:14.5px;}
+  .graficocard .g-s{font-size:11.5px; color:var(--text-dim); font-family:var(--mono); margin-top:3px;}
+  .g-trocar{background:var(--card-2); border:1px solid var(--line); color:var(--text-dim); font-family:inherit; font-size:11.5px; padding:7px 11px; border-radius:8px; cursor:pointer; flex-shrink:0; min-height:34px;}
+  .g-trocar:active{border-color:var(--accent); color:var(--accent);}
+  .barchart{width:100%; height:auto; display:block;}
+  .barchart .b{fill:var(--accent-dim);}
+  .barchart .b.atual{fill:var(--accent);}
+  .barchart .b.vazia{fill:var(--line);}
+  .barchart .eixo{stroke:var(--line); stroke-width:1;}
+  .barchart .lg{fill:var(--text-faint); font-size:9px; font-family:var(--mono);}
+  .gvazio{text-align:center; padding:18px 10px 22px;}
+  .gvazio .gv-i{font-family:var(--mono); font-size:26px; color:var(--line-strong); letter-spacing:3px; margin-bottom:10px;}
+  .gvazio .gv-t{font-family:var(--display); font-weight:600; font-size:14.5px;}
+  .gvazio .gv-s{font-size:12.5px; color:var(--text-dim); line-height:1.5; margin-top:5px;}
+
+  /* números secundários: discretos de propósito, o destaque é o gráfico */
+  .ministats{display:flex; gap:18px; padding:0 20px 20px; flex-wrap:wrap;}
+  .mini{display:flex; align-items:baseline; gap:6px;}
+  .mini .mv{font-family:var(--mono); font-size:16px; font-weight:700; color:var(--text);}
+  .mini .ml{font-size:12px; color:var(--text-dim);}
+
+  /* próximo treino: a ação principal da tela */
+  .proximo{padding:0 16px 6px;}
+  .proxcard{width:100%; text-align:left; display:flex; flex-direction:column; gap:3px; background:linear-gradient(180deg, rgba(185,255,60,.07), rgba(185,255,60,.02)); border:1px solid var(--accent); border-radius:14px; padding:16px; cursor:pointer; font-family:inherit; color:inherit;}
+  .proxcard:active{opacity:.85;}
+  .proxcard .px-tag{font-family:var(--mono); font-size:11px; color:var(--accent); letter-spacing:.05em;}
+  .proxcard .px-nome{font-family:var(--display); font-weight:700; font-size:19px; margin-top:2px;}
+  .proxcard .px-meta{font-size:12.5px; color:var(--text-dim); margin-top:1px;}
+  .proxcard .px-acao{margin-top:12px; font-family:var(--display); font-weight:700; font-size:14px; color:var(--accent);}
 
   /* ---------- session ---------- */
   .session-meta{padding:0 20px 14px; display:flex; gap:22px;}

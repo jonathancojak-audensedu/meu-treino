@@ -115,16 +115,65 @@ const treino = (id, data, extra) => Object.assign({
   const semDuracao = m([treino('z', menos(SEGUNDA, 1), {duration: 0, volume: 0, setsDone: 0})], PERFIL, SEGUNDA).ultimo;
   check('treino sem duração nem volume não vira NaN', semDuracao.minutos === 0 && semDuracao.volume === 0);
 
-  console.log('\n== na tela: usuário novo vê convite, não três zeros ==');
+  console.log('\n== na tela: usuário novo vê convite, não tela vazia ==');
   const $ = seletor(w);
-  check('painel marcado como vazio', $('homestats').classList.contains('vazio'));
-  check('mostra um convite pra começar', $('homestats').textContent.includes('começar'));
-  check('explica o que vai aparecer ali', $('homestats').textContent.includes('sequência'));
-  check('não mostra número nenhum solto', !$('homestats').querySelector('.homestat'));
-  check('a linha do último treino fica escondida', $('home-ultimo').style.display === 'none');
-  check('o próximo treino continua sendo a ação principal', !!$('daylist').querySelector('.daycard.next'));
+  check('a saudação cumprimenta pelo nome', /Ana/.test($('home-saudacao').textContent));
+  check('e usa bom dia, boa tarde ou boa noite', /Bom dia|Boa tarde|Boa noite/.test($('home-saudacao').textContent));
+  check('mostra uma frase de boas-vindas', $('home-frase').textContent.length > 10);
+  check('bloco da meta convida em vez de mostrar 0/4', $('home-meta').textContent.includes('primeira semana'));
+  check('a faixa da semana some enquanto não há treino', $('home-semana').style.display === 'none');
+  check('o gráfico vira convite em vez de eixo vazio', $('home-grafico').textContent.includes('gráfico aparece aqui'));
+  check('não desenha barra nenhuma sem dado', !$('home-grafico').querySelector('.barchart'));
+  check('números secundários ficam escondidos', $('home-mini').style.display === 'none');
+  check('o próximo treino é a ação principal', !!$('home-proximo').querySelector('.proxcard'));
+  check('e convida a começar o primeiro', $('home-proximo').textContent.includes('primeiro treino'));
 
-  console.log('\n== na tela: depois de treinar, os números aparecem ==');
+  console.log('\n== as frases de boas-vindas são conteúdo revisado, não podem regredir ==');
+  const frases = MT.FRASES_BOAS_VINDAS;
+  check('o pool tem 24 frases', frases.length === 24);
+  check('nenhuma frase repetida', new Set(frases).size === frases.length);
+  check('nenhuma vazia', frases.every(f => typeof f === 'string' && f.trim().length > 8));
+  check('nenhuma usa travessão, que o projeto não usa', frases.every(f => !f.includes('—')));
+  /* estas quatro foram trocadas na revisão de tom: a de "o corpo aguenta mais
+     do que a cabeça acha" incentivava passar por cima do limite, e as outras
+     soavam como cobrança ou clichê. Não devem voltar. */
+  const removidas = ['O corpo aguenta mais', 'Ninguém nunca se arrependeu', 'O que não é registrado', 'é sobre ser melhor que ontem'];
+  check('nenhuma das frases removidas na revisão voltou', removidas.every(r => !frases.some(f => f.includes(r))));
+  const aprovadas = ['Consistência constrói mais que exagero.', 'Treino registrado é evolução que você vê crescer.', 'Ninguém se arrepende de ter treinado.', 'Melhor que ontem já é vitória.'];
+  check('as quatro frases revisadas estão no pool', aprovadas.every(a => frases.includes(a)));
+
+  console.log('\n== a faixa da semana marca os sete dias ==');
+  const dias = MT.metricasDaHome([{id:'d1', name:'T', date:new Date(SEGUNDA.getTime() + 2*3600000).toISOString(), duration:600, volume:100, setsDone:5, exercises:[]}], PERFIL, SEGUNDA).diasDaSemana;
+  check('sempre sete posições', dias.length === 7);
+  check('começa na segunda', dias[0].rotulo === 'S' && dias[6].rotulo === 'D');
+  check('marca o dia em que houve treino', dias[0].treinou === true);
+  check('não marca os outros', dias.filter(d => d.treinou).length === 1);
+  check('sabe qual é hoje', dias[0].hoje === true);
+  check('e o que ainda não chegou', dias[6].futuro === true);
+
+  console.log('\n== a métrica do gráfico sai do dado da pessoa e não muda sozinha ==');
+  const comCarga = [{id:'g1', name:'T', date: menos(SEGUNDA, 3), duration:600, volume:5000, setsDone:20, exercises:[]}];
+  const semCarga = [{id:'g2', name:'T', date: menos(SEGUNDA, 3), duration:600, volume:0, setsDone:18, exercises:[]}];
+  const semNada = [{id:'g3', name:'T', date: menos(SEGUNDA, 3), duration:600, volume:0, setsDone:0, exercises:[]}];
+  check('quem registra carga vê volume', MT.metricaSugerida(comCarga) === 'volume');
+  check('quem não registra carga cai pra séries', MT.metricaSugerida(semCarga) === 'series');
+  check('sem carga e sem série, cai pra treinos', MT.metricaSugerida(semNada) === 'treinos');
+  const gv = MT.graficoDaHome(comCarga, 'volume', SEGUNDA);
+  check('o gráfico vem sempre rotulado', gv.titulo === 'Volume por semana');
+  check('a escolha manual é respeitada, mesmo contrariando o dado',
+    MT.graficoDaHome(comCarga, 'treinos', SEGUNDA).titulo === 'Treinos por semana');
+  check('oito semanas de barras, sempre', gv.barras.length === 8);
+  check('a última barra é a semana atual', gv.barras[7].atual === true);
+  check('semana sem treino vira barra zerada, não some do gráfico', gv.barras[0].valor === 0);
+  check('com uma semana só de dado, ainda não desenha', gv.suficiente === false);
+  const duasSemanas = [
+    {id:'s1', name:'T', date: menos(SEGUNDA, 2), duration:600, volume:5000, setsDone:20, exercises:[]},
+    {id:'s2', name:'T', date: menos(SEGUNDA, 9), duration:600, volume:4000, setsDone:18, exercises:[]}
+  ];
+  check('com duas semanas, o gráfico aparece', MT.graficoDaHome(duasSemanas, 'volume', SEGUNDA).suficiente === true);
+  check('e soma o total do período', MT.graficoDaHome(duasSemanas, 'volume', SEGUNDA).total === 9000);
+
+  console.log('\n== na tela: depois de treinar, o painel se enche ==');
   $('daylist').querySelector('[data-open="upperA"]').click();
   await wait(20);
   $('btn-begin').click();
@@ -140,17 +189,23 @@ const treino = (id, data, extra) => Object.assign({
   $('btn-sum-done').click();
   await wait(80);
 
-  check('painel deixa de estar vazio', !$('homestats').classList.contains('vazio'));
-  const stats = $('homestats').querySelectorAll('.homestat');
-  check('mostra exatamente três números', stats.length === 3);
-  check('primeiro é a sequência, e já conta 1 semana', stats[0].querySelector('.v').textContent === '1');
-  check('rótulo no singular com uma semana só', stats[0].querySelector('.l').textContent === 'Semana seguida');
-  check('segundo é a semana contra a meta', stats[1].querySelector('.v').textContent.replace(/\s/g,'') === '1/4');
-  check('terceiro é o recorde, e o primeiro registro já conta', stats[2].querySelector('.v').textContent === '1');
-  check('rótulo de recorde no singular', stats[2].querySelector('.l').textContent === 'Recorde');
-  check('a linha do último treino aparece', $('home-ultimo').style.display !== 'none');
-  check('e cita o treino feito', $('home-ultimo').textContent.includes('Upper A'));
-  check('com quando foi', $('home-ultimo').textContent.includes('hoje'));
+  check('a meta mostra 1 de 4', $('home-meta').textContent.replace(/\s/g,'').includes('1/4'));
+  check('com texto de incentivo, não só o número', $('home-meta').textContent.includes('Faltam 3 treinos'));
+  check('a barra de progresso aparece', !!$('home-meta').querySelector('.barra-fill'));
+  check('a faixa da semana aparece com os sete dias', $('home-semana').style.display !== 'none' && $('home-semana').querySelectorAll('.dia').length === 7);
+  check('e marca o dia de hoje como feito', !!$('home-semana').querySelector('.dia.feito'));
+  check('os números secundários aparecem', $('home-mini').style.display !== 'none' && $('home-mini').querySelectorAll('.mini').length === 3);
+  check('o gráfico ainda pede a segunda semana', $('home-grafico').textContent.includes('comparar'));
+  check('mas já mostra o título da métrica', $('home-grafico').textContent.includes('por semana'));
+  check('o botão de trocar métrica está visível', !!$('btn-trocar-grafico'));
+  check('o próximo treino continua em destaque', !!$('home-proximo').querySelector('.proxcard'));
+
+  console.log('\n== trocar a métrica é manual e fica gravado ==');
+  const antes = MT.settings.graficoHome;
+  $('btn-trocar-grafico').click();
+  await wait(60);
+  check('a métrica mudou ao tocar', MT.settings.graficoHome !== antes);
+  check('e o título acompanhou', $('home-grafico').textContent.includes('por semana'));
 
   console.log('\n' + (check.fails ? check.fails + ' FALHAS' : 'todas as verificacoes passaram'));
   process.exit(check.fails ? 1 : 0);

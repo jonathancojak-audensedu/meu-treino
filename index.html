@@ -32,16 +32,20 @@
 <div id="app">
 
   <!-- ============ HOME ============ -->
-  <section id="screen-home" class="screen active" aria-label="Treinos">
-    <div class="topbar">
+  <section id="screen-home" class="screen active" aria-label="Início">
+    <div class="topbar hometop">
       <div>
         <h1>Meu Treino</h1>
         <div class="sub" id="home-sub"></div>
       </div>
       <button class="homeavatar" id="home-avatar" type="button" aria-label="Abrir ajustes"></button>
     </div>
-    <div class="homestats" id="homestats"></div>
-    <div class="homeultimo" id="home-ultimo" style="display:none;"></div>
+
+    <div class="hero" id="home-hero">
+      <div class="hero-saud" id="home-saudacao"></div>
+      <div class="hero-frase" id="home-frase"></div>
+    </div>
+
     <div class="resume" id="resume" role="region" aria-label="Treino em andamento">
       <div class="rt" id="resume-title">Treino em andamento</div>
       <div class="rs" id="resume-sub"></div>
@@ -50,7 +54,18 @@
         <button class="drop" id="resume-drop">Descartar</button>
       </div>
     </div>
-    <div class="weeklabel">Treinos da semana</div>
+
+    <div class="metacard" id="home-meta"></div>
+    <div class="semanafaixa" id="home-semana" role="img"></div>
+
+    <div class="graficocard" id="home-grafico"></div>
+
+    <div class="ministats" id="home-mini"></div>
+
+    <div class="weeklabel">Próximo treino</div>
+    <div class="proximo" id="home-proximo"></div>
+
+    <div class="weeklabel">Todos os treinos</div>
     <div class="daylist" id="daylist"></div>
     <div class="divider-note" id="home-nota"></div>
   </section>
