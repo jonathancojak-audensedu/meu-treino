@@ -292,7 +292,7 @@ function openPreview(key){
       '<div class="exhead" style="cursor:default">' +
         '<span class="exmain"><span class="idx">Exercício ' + (i+1) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
-        '<span class="target">' + fmtPrescricao(it, def, true) + ' · descanso ' + fmtRest(it.rest) + '</span>' +
+        '<span class="target">' + fmtPrescricao(it, def, true) + ' · descanso ' + fmtRest(descansoDoExercicio(it)) + '</span>' +
         (last ? '<span class="exsummary">última vez: ' + summarizeSets(last.sets, def.type) + '</span>' : '') +
         (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
         '</span>' +
@@ -616,7 +616,7 @@ function cardHTML(item, pos){
       '<span class="exmain">' +
         '<span class="idx">' + (allDone ? '<span class="doneflag">✓ concluído</span>' : 'Exercício ' + (pos+1)) + '</span>' +
         '<span class="exname">' + esc(def.name) + '</span>' +
-        '<span class="target">' + fmtPrescricao(item, def, false) + ' · ' + fmtRest(item.rest) + '</span>' +
+        '<span class="target">' + fmtPrescricao(item, def, false) + ' · ' + fmtRest(descansoDoExercicio(item)) + '</span>' +
         (!last ? '<span class="suggestion">primeira vez: comece leve e ajuste na segunda série</span>' : (sug ? '<span class="suggestion">' + esc(formatarSugestao(sug)) + '</span>' : '')) +
         (allDone && summary ? '<span class="exsummary">' + summary + '</span>' : '') +
       '</span>' +
@@ -739,9 +739,39 @@ function abrirEdicaoInicio(){
    12. DESCANSO
    O bipe é agendado no relógio do AudioContext, então toca na hora certa
    mesmo se o navegador congelar os temporizadores em segundo plano.
+
+   Quanto tempo descansar sai de três fontes, nesta ordem:
+   1. o ajuste que a pessoa fez naquele exercício (vale pra sempre, em
+      qualquer dia que use o mesmo exercício);
+   2. a preferência global de Ajustes, que encurta ou alonga o prescrito
+      em vez de trocar por um valor fixo: assim um principal de força
+      (180s) continua descansando bem mais que um isolado (45s);
+   3. o que o gerador prescreveu, que é o padrão.
    ------------------------------------------------------------------------- */
-function startRest(seconds, label, proxima){
-  session.rest = {endsAt: Date.now() + seconds * 1000, total: seconds, label: label, proxima: proxima || ''};
+const ESCALA_DESCANSO = {curto: 0.7, normal: 1, longo: 1.3};
+const DESCANSO_MIN = 15;
+const DESCANSO_MAX = 600;
+
+function limitarDescanso(seg){
+  return Math.max(DESCANSO_MIN, Math.min(DESCANSO_MAX, seg));
+}
+/* arredonda pra múltiplo de 5 pra não mostrar 94s na tela */
+function descansoDoExercicio(item){
+  const porExercicio = (settings.descansoPorExercicio || {})[item.ex];
+  if(porExercicio != null) return limitarDescanso(porExercicio);
+  const escala = ESCALA_DESCANSO[settings.descansoEscala] || 1;
+  return limitarDescanso(Math.round(item.rest * escala / 5) * 5);
+}
+/* Grava o descanso escolhido pro exercício, não pro item do dia: quem
+   descobriu treinando que precisa de 2 min no supino quer isso em todo
+   treino que tenha supino, inclusive depois de refazer o programa. */
+async function definirDescansoDoExercicio(exId, seg){
+  if(!settings.descansoPorExercicio) settings.descansoPorExercicio = {};
+  settings.descansoPorExercicio[exId] = limitarDescanso(seg);
+  await Store.set('settings', settings);
+}
+function startRest(seconds, label, proxima, uid){
+  session.rest = {endsAt: Date.now() + seconds * 1000, total: seconds, label: label, proxima: proxima || '', uid: uid || ''};
   saveSession();
   scheduleBeep(seconds);
   startRestLoop();
@@ -784,12 +814,23 @@ function toggleRestExpand(){
   restExpanded = !restExpanded;
   $('resttimer').classList.toggle('expanded', restExpanded);
 }
+/* Mexer no descanso durante o treino ajusta o que está correndo agora e
+   também vira o padrão daquele exercício: é treinando que a pessoa descobre
+   de quanto precisa, não numa tela de configuração. O timer continua por
+   horário de término (endsAt), então isso sobrevive a tela bloqueada e app
+   em segundo plano igual antes. */
 function addRest(sec){
   if(!session || !session.rest) return;
   session.rest.endsAt += sec * 1000;
   session.rest.total = Math.max(session.rest.total, Math.ceil((session.rest.endsAt - Date.now())/1000));
   cancelScheduledBeeps();
   scheduleBeep(Math.ceil((session.rest.endsAt - Date.now()) / 1000));
+
+  const item = session.rest.uid ? itemByUid(session.rest.uid) : null;
+  if(item){
+    definirDescansoDoExercicio(item.ex, descansoDoExercicio(item) + sec);
+    refreshCard(item.uid);
+  }
   saveSession();
   tickRest();
 }
@@ -959,7 +1000,7 @@ function toggleSet(uid, s){
   if(entry.done){
     if(defOf(item.ex).type !== 'cardio'){
       const proxima = doneCount < item.sets ? 'Série ' + (doneCount + 1) + ' de ' + item.sets : 'Última série feita';
-      startRest(item.rest, defOf(item.ex).name, proxima);
+      startRest(descansoDoExercicio(item), defOf(item.ex).name, proxima, item.uid);
     }
     if(doneCount >= item.sets) scrollToNext(posOf(uid));
   }

@@ -261,7 +261,7 @@ async function removerAvatar(){
    19. BACKUP
    ------------------------------------------------------------------------- */
 function exportBackup(){
-  const payload = construirPayloadBackup({history, overrides, customEx, profile, corpo, program: PROGRAM, favoritos, avatar});
+  const payload = construirPayloadBackup({history, overrides, customEx, profile, corpo, program: PROGRAM, favoritos, avatar, settings});
   baixarJSON(payload, 'meu-treino-' + new Date().toISOString().slice(0, 10) + '.json');
   toast('Backup gerado');
 }
@@ -289,6 +289,13 @@ async function importBackup(file){
   if(data.corpo){ setCorpo(data.corpo); await Store.set('corpo', corpo); atualizarAjustes(); }
   if(data.favoritos){ setFavoritos(data.favoritos); await Store.set('favoritos', favoritos); }
   if(typeof data.avatar === 'string'){ setAvatar(data.avatar); await Store.set('avatar', avatar); }
+  if(data.settings && typeof data.settings === 'object'){
+    settings = Object.assign(settings, data.settings);
+    await Store.set('settings', settings);
+    $('sw-sound').setAttribute('aria-checked', settings.sound ? 'true' : 'false');
+    $('sw-wake').setAttribute('aria-checked', settings.wake ? 'true' : 'false');
+    marcarDescanso();
+  }
   await saveHistory();
   renderHistory(); renderHome(); renderAvatar();
   toast('Backup restaurado');
@@ -393,6 +400,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v42', itens: [
+    'Tempo de descanso configurável: mais curto ou mais longo em Ajustes, e o -15s/+15s durante o treino agora vale pras próximas séries daquele exercício'
+  ]},
   {versao: 'meu-treino-v41', itens: [
     'Excluir um exercício agora fica separado de tirar uma série, e pergunta antes de apagar'
   ]},
@@ -669,6 +679,21 @@ function bindSwitch(id, key, onChange){
 bindSwitch('sw-sound', 'sound', on => { if(on){ unlockAudio(); beep(); vibrate(); } });
 bindSwitch('sw-wake', 'wake', on => { if(on) requestWake(); else releaseWake(); });
 
+/* preferência global de descanso: encurta ou alonga o prescrito, e o ajuste
+   por exercício feito durante o treino continua valendo mais que ela */
+function marcarDescanso(){
+  document.querySelectorAll('[data-descanso]').forEach(b =>
+    b.setAttribute('aria-checked', b.dataset.descanso === (settings.descansoEscala || 'normal') ? 'true' : 'false'));
+}
+document.querySelectorAll('[data-descanso]').forEach(b => {
+  b.onclick = () => {
+    settings.descansoEscala = b.dataset.descanso;
+    marcarDescanso();
+    Store.set('settings', settings);
+    if(session) renderSession();
+  };
+});
+
 /* volta do segundo plano: recalcula tudo pelo relógio */
 function resync(){
   if(document.visibilityState && document.visibilityState !== 'visible') return;
@@ -725,6 +750,7 @@ async function boot(){
   setAvatar(av);
   $('sw-sound').setAttribute('aria-checked', settings.sound ? 'true' : 'false');
   $('sw-wake').setAttribute('aria-checked', settings.wake ? 'true' : 'false');
+  marcarDescanso();
 
   // sessões no formato antigo (sem items) são descartadas
   if(active && active.startedAt && Array.isArray(active.items) && (Date.now() - active.startedAt) < 12 * 3600 * 1000){

@@ -233,6 +233,11 @@
   .setitem .d{font-size:12px; color:var(--text-dim); margin-top:3px; line-height:1.45;}
   .setitem .chev{color:var(--text-faint); font-size:20px;}
   .avatarsetitem{flex-direction:column; align-items:stretch; gap:14px;}
+  /* item de ajuste cujo controle não cabe ao lado do texto e vai embaixo */
+  .setitem.coluna{flex-direction:column; align-items:stretch; gap:12px;}
+  .segmentado{display:flex; gap:6px;}
+  .seg{flex:1; min-height:44px; padding:10px 8px; border-radius:9px; border:1px solid var(--line-strong); background:var(--card-2); color:var(--text-dim); font-family:inherit; font-size:12.5px; cursor:pointer;}
+  .seg[aria-checked="true"]{background:var(--accent); border-color:var(--accent); color:#111; font-weight:700;}
   .avatarrow{display:flex; align-items:center; gap:14px;}
   .avatarpreview{width:56px; height:56px; min-height:56px; border-radius:50%; background-color:var(--card-2); background-position:center; background-size:cover; background-repeat:no-repeat; border:1px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-family:var(--display); font-weight:700; font-size:20px;}
   .avatarbtns{display:flex; gap:10px;}

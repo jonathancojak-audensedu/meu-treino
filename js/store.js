@@ -117,12 +117,16 @@ async function migrarDados(alvoVersao){
    de volta no app (reatribuir as variáveis de estado, re-renderizar) é
    responsabilidade de quem chama, porque isso depende do estado vivo do app.
    ------------------------------------------------------------------------- */
+/* version 5 passou a levar `settings` junto: é lá que moram as preferências
+   de descanso (a global e a de cada exercício), e sem isso restaurar um
+   backup devolvia o histórico mas jogava fora esses ajustes. Backup antigo,
+   sem o campo, continua importando normal. */
 function construirPayloadBackup(estado){
   return {
-    app: 'meu-treino', version: 4, exportedAt: new Date().toISOString(),
+    app: 'meu-treino', version: 5, exportedAt: new Date().toISOString(),
     history: estado.history, overrides: estado.overrides, customEx: estado.customEx,
     profile: estado.profile, corpo: estado.corpo, program: estado.program, favoritos: estado.favoritos,
-    avatar: estado.avatar
+    avatar: estado.avatar, settings: estado.settings
   };
 }
 
