@@ -17,6 +17,7 @@ App de registro de treino de musculação. HTML, CSS e JavaScript puro, sem fram
 - `sw.js` — service worker, cache offline
 - `manifest.webmanifest`, `icon-*.png`, `apple-touch-icon.png` — PWA
 - `tests/` — testes em Node com jsdom, mais `_helpers.js` e `_loader.mjs` (infraestrutura compartilhada, não são teste em si)
+- `README.md` — reflete o estado real do app e serve de referência junto com este arquivo. Foi reescrito do zero: descreve o que existe hoje (gerador, catálogo, motor de progressão, home, abas, histórico), o mapa de módulos e as instruções de publicar, instalar e testar. Ao mudar algo que ele descreve, atualize os dois.
 
 O app é carregado como módulos ES nativos (`<script type="module" src="./js/main.js">`), sem build. Isso tem uma consequência direta pro desenvolvimento local: **abrir `index.html` direto pelo `file://` não funciona**, porque módulos ES exigem `http(s)://`. Para testar no navegador localmente, suba um servidor estático primeiro, por exemplo `python3 -m http.server` na raiz do repositório, e abra `http://localhost:8000`.
 
