@@ -53,6 +53,7 @@ function renderHistory(){
           (e.sets || []).map(s => '<span>' + fmtSet(s, e.type) + '</span>').join('') +
           '</div></div>').join('') +
         '<div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">' +
+          '<button class="minibtn" data-sharehist="' + h.id + '">Compartilhar</button>' +
           '<button class="minibtn" data-editdata="' + h.id + '">Editar data e horário</button>' +
           '<button class="minibtn danger" data-delhist="' + h.id + '">Apagar este treino</button>' +
         '</div>' +

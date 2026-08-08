@@ -131,6 +131,52 @@ const RECORDES = [
   check('avisa que precisa ser imagem', $('toast').textContent.includes('imagem'));
   check('e nao marca foto nenhuma', $('btn-sum-foto').textContent === 'Adicionar foto');
 
+  console.log('\n== recordes de um treino antigo saem do que existia ANTES dele ==');
+  const rec = MT.recordesDoTreino;
+  const dia = n => new Date(Date.now() - n * 86400000).toISOString();
+  const sessao = (id, diasAtras, w, r) => ({
+    id: id, name:'Treino', date: dia(diasAtras), duration: 3000, volume: 100, setsDone: 1,
+    exercises: [{exId:'supino_reto', name:'Supino reto barra', type:'reps', sets:[{w:String(w), r:String(r)}]}]
+  });
+  // 60kg (antigo) -> 80kg (meio) -> 100kg (recente)
+  const linhaDoTempo = [sessao('h3', 1, 100, 5), sessao('h2', 10, 80, 5), sessao('h1', 20, 60, 5)];
+  const doMeio = rec(linhaDoTempo[1], linhaDoTempo);
+  check('o treino do meio conta como recorde na epoca dele (80 superou 60)', doMeio.length === 1);
+  check('e mostra a carga daquele dia, nao a de hoje', doMeio[0].detail === '80 kg x 5');
+  const oMaisAntigo = rec(linhaDoTempo[2], linhaDoTempo);
+  check('o primeiro treino do exercicio conta como primeiro registro', oMaisAntigo.length === 1 && oMaisAntigo[0].first === true);
+  const semRecorde = rec(sessao('h4', 5, 70, 5), linhaDoTempo);
+  check('treino que nao superou o anterior nao vira recorde', semRecorde.length === 0);
+  check('o proprio treino nao entra na comparacao consigo mesmo', rec(linhaDoTempo[0], linhaDoTempo).length === 1);
+  const soTempo = {id:'t', name:'T', date: dia(2), duration: 60, volume: 0, setsDone: 1,
+    exercises: [{exId:'prancha', name:'Prancha abdominal', type:'time', sets:[{w:'', r:'60'}]}]};
+  check('exercicio de tempo nao gera recorde de carga', rec(soTempo, [soTempo]).length === 0);
+  check('historico vazio nao quebra', rec(linhaDoTempo[0], []).length === 1);
+
+  console.log('\n== compartilhar um treino antigo pelo historico ==');
+  $('nav-history').click();
+  await wait(60);
+  const cardHist = $('histlist').querySelector('[data-hist]');
+  check('o treino finalizado aparece no historico', !!cardHist);
+  const idHist = cardHist.dataset.hist;
+  check('o card fechado ainda nao mostra o botao', $('hd-' + idHist).className.indexOf('open') === -1);
+  cardHist.click();
+  await wait(300);
+  check('abrir o card revela o botao de compartilhar', !!$('histlist').querySelector('[data-sharehist="' + idHist + '"]'));
+  check('abrir o card ja deixa a imagem pronta, sem esperar o clique', !!w.MT._shareFile);
+  check('a imagem do historico e um PNG', w.MT._shareFile.type === 'image/png');
+  check('o arquivo cita o treino do historico', w.MT._shareFile.name === 'treino-' + idHist + '.png');
+  check('compartilhar pelo historico nao carrega a foto do resumo anterior',
+    $('btn-sum-foto').textContent === 'Adicionar foto');
+
+  let compartilhou = null;
+  w.navigator.share = arg => { compartilhou = arg; return Promise.resolve(); };
+  w.navigator.canShare = () => true;
+  $('histlist').querySelector('[data-sharehist="' + idHist + '"]').click();
+  await wait(60);
+  check('o botao do historico dispara o compartilhamento', !!compartilhou);
+  check('e manda o arquivo daquele treino', compartilhou && compartilhou.files[0].name === 'treino-' + idHist + '.png');
+
   /* por ultimo porque abre outra janela e fecha a de cima */
   console.log('\n== o card se vira sem perfil nenhum ==');
   const semPerfil = await boot();

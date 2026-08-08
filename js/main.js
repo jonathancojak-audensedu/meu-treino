@@ -30,7 +30,8 @@ import {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile, montarCartaoResumo,
+  compartilharResumo, getShareFile, montarCartaoResumo, recordesDoTreino,
+  prepararCompartilhamentoDoHistorico,
   usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao
 } from './session.js';
@@ -401,6 +402,9 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v44', itens: [
+    'Dá pra compartilhar um treino antigo pelo histórico, não só o que você acabou de terminar'
+  ]},
   {versao: 'meu-treino-v43', itens: [
     'Dá pra tirar uma foto na hora de compartilhar o treino: ela entra como fundo do card'
   ]},
@@ -615,8 +619,13 @@ $('histlist').addEventListener('click', e => {
     const d = $('hd-' + h.dataset.hist);
     const open = d.classList.toggle('open');
     h.setAttribute('aria-expanded', open ? 'true' : 'false');
+    // prepara a imagem já ao abrir o card: o navigator.share do iOS precisa
+    // sair direto do gesto, sem espera pela geração no meio
+    if(open) prepararCompartilhamentoDoHistorico(h.dataset.hist);
     return;
   }
+  const sh = e.target.closest('[data-sharehist]');
+  if(sh) return compartilharResumo();
   const del = e.target.closest('[data-delhist]');
   if(del) deleteHistory(del.dataset.delhist);
   const ed = e.target.closest('[data-editdata]');
@@ -863,7 +872,7 @@ window.MT = {
   Store: Store,
   exportBackup: exportBackup, importBackup: importBackup,
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
-  montarCartaoResumo: montarCartaoResumo,
+  montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers

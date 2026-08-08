@@ -1408,6 +1408,46 @@ let fotoCompartilhamento = null;
 /* último resumo renderizado, pra regerar a imagem quando a foto entra ou sai */
 let resumoAtual = null;
 
+/* Os recordes de um treino não ficam salvos junto com ele: são calculados na
+   hora de finalizar, comparando com o melhor de então. Pra compartilhar um
+   treino antigo pelo histórico, precisam ser refeitos olhando só o que veio
+   ANTES daquela data, senão um treino de mês passado apareceria sem nenhum
+   recorde só porque as cargas subiram depois. Função pura: recebe o treino e
+   o histórico, devolve os recordes daquele dia. */
+function recordesDoTreino(entry, lista){
+  const anteriores = (lista || []).filter(h => h.id !== entry.id && new Date(h.date) < new Date(entry.date));
+  const melhorAntesDe = exId => {
+    let melhor = null;
+    anteriores.forEach(h => {
+      (h.exercises || []).forEach(e => {
+        if(e.exId !== exId) return;
+        (e.sets || []).forEach(s => {
+          const w = parseFloat(s.w) || 0, r = parseFloat(s.r) || 0;
+          if(w <= 0 || r <= 0) return;
+          if(!melhor || w > melhor.w || (w === melhor.w && r > melhor.r)) melhor = {w: w, r: r};
+        });
+      });
+    });
+    return melhor;
+  };
+  const prs = [];
+  (entry.exercises || []).forEach(e => {
+    if(e.type !== 'reps') return;
+    let best = null;
+    (e.sets || []).forEach(s => {
+      const w = parseFloat(s.w) || 0, r = parseFloat(s.r) || 0;
+      if(w <= 0 || r <= 0) return;
+      if(!best || w > best.w || (w === best.w && r > best.r)) best = {w: w, r: r};
+    });
+    if(!best) return;
+    const prev = melhorAntesDe(e.exId);
+    if(!prev || best.w > prev.w || (best.w === prev.w && best.r > prev.r)){
+      prs.push({name: e.name, detail: best.w + ' kg x ' + best.r, first: !prev});
+    }
+  });
+  return prs;
+}
+
 /* Modelo de dados do card, separado do desenho. Recebe o treino já salvo e os
    recordes, devolve só texto pronto: dá pra testar sem canvas, e é o mesmo
    modelo que o histórico vai usar pra compartilhar um treino antigo. */
@@ -1664,6 +1704,19 @@ async function removerFotoDoCompartilhamento(){
   toast('Foto removida do card');
 }
 
+/* Compartilhar um treino do histórico. A imagem é preparada quando o card é
+   aberto, não no clique do botão, pelo mesmo motivo do resumo: o iOS exige
+   que o navigator.share saia direto do gesto, sem await no meio. Vai sem
+   foto de propósito, porque a foto é do momento do treino. */
+async function prepararCompartilhamentoDoHistorico(entryId){
+  const entry = history.find(h => h.id === entryId);
+  if(!entry) return;
+  if(fotoCompartilhamento && fotoCompartilhamento.close) fotoCompartilhamento.close();
+  fotoCompartilhamento = null;
+  atualizarBotoesFoto();
+  await prepararCompartilhamento(entry, recordesDoTreino(entry, history));
+}
+
 /* a foto vale só pra este compartilhamento; sair do resumo descarta */
 function limparFotoCompartilhamento(){
   if(fotoCompartilhamento && fotoCompartilhamento.close) fotoCompartilhamento.close();
@@ -1724,7 +1777,8 @@ export {
   onInput, onKeydown, stepReps, toggleSet, addSet, delSet, moveItem, removeItem, undoRemove,
   swapExercise, addExercise, pickExercise,
   hasProgress, leaveSession, cancelWorkout, finishWorkout, pararTimers,
-  compartilharResumo, getShareFile, montarCartaoResumo,
+  compartilharResumo, getShareFile, montarCartaoResumo, recordesDoTreino,
+  prepararCompartilhamentoDoHistorico,
   usarFotoNoCompartilhamento, removerFotoDoCompartilhamento, limparFotoCompartilhamento,
   abrirExecucao
 };
