@@ -398,7 +398,9 @@
 
   /* ---------- bottom nav ---------- */
   .bottomnav{position:fixed; left:0; right:0; bottom:0; max-width:520px; margin:0 auto; background:var(--bg-elev); border-top:1px solid var(--line); display:flex; z-index:60; padding-bottom:env(safe-area-inset-bottom);}
-  .navbtn{flex:1; padding:10px 0 8px; background:none; border:none; color:var(--text-faint); display:flex; flex-direction:column; align-items:center; gap:4px; font-size:11px; cursor:pointer; font-family:var(--sans); min-height:var(--navh);}
+  /* com quatro abas o rótulo tem menos largura, então fonte um pouco menor e
+     sem quebrar linha: "Histórico" e "Ajustes" precisam caber inteiros */
+  .navbtn{flex:1; padding:10px 2px 8px; background:none; border:none; color:var(--text-faint); display:flex; flex-direction:column; align-items:center; gap:4px; font-size:10.5px; cursor:pointer; font-family:var(--sans); min-height:var(--navh); white-space:nowrap;}
   .navbtn[aria-current="page"]{color:var(--accent);}
   .navbtn svg{width:21px; height:21px;}
   .navbtn .dot{position:absolute; margin-left:26px; margin-top:-2px; width:7px; height:7px; border-radius:50%; background:var(--accent); display:none;}

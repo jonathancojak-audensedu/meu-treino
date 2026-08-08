@@ -64,8 +64,16 @@
 
     <div class="weeklabel">Próximo treino</div>
     <div class="proximo" id="home-proximo"></div>
+  </section>
 
-    <div class="weeklabel">Todos os treinos</div>
+  <!-- ============ TREINOS ============ -->
+  <section id="screen-treinos" class="screen" aria-label="Meus treinos">
+    <div class="topbar">
+      <div>
+        <h1>Treinos</h1>
+        <div class="sub" id="treinos-sub"></div>
+      </div>
+    </div>
     <div class="daylist" id="daylist"></div>
     <div class="divider-note" id="home-nota"></div>
   </section>
@@ -338,6 +346,12 @@
   <nav class="bottomnav" aria-label="Navegação principal">
     <button class="navbtn" id="nav-home" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+      Início
+    </button>
+    <button class="navbtn" id="nav-treinos">
+      <!-- halter: dois pesos de cada lado e a barra no meio. Um sinal de mais
+           na segunda posição leria como "adicionar", não como "meus treinos" -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6.5 7v10"/><path d="M3.5 9.5v5"/><path d="M17.5 7v10"/><path d="M20.5 9.5v5"/><path d="M6.5 12h11"/></svg>
       <span class="dot" aria-hidden="true"></span>
       Treinos
     </button>

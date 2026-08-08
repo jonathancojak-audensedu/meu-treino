@@ -135,19 +135,24 @@ function daysAgo(iso){
 /* -------------------------------------------------------------------------
    8. NAVEGAÇÃO
    ------------------------------------------------------------------------- */
-const NAVS = {home:'nav-home', history:'nav-history', settings:'nav-settings'};
+const NAVS = {home:'nav-home', treinos:'nav-treinos', history:'nav-history', settings:'nav-settings'};
+/* Telas sem aba própria acendem a aba de onde vieram: quem está no meio de
+   um treino continua vendo "Treinos" marcado, em vez de nenhuma aba acesa. */
+const ABA_DA_TELA = {session:'treinos', summary:'treinos'};
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $('screen-' + name).classList.add('active');
+  const aba = ABA_DA_TELA[name] || name;
   Object.entries(NAVS).forEach(([k, id]) => {
     const el = $(id);
-    if(k === name) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+    if(k === aba) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
   });
   $('resttimer').classList.toggle('show', name === 'session' && !!(session && session.rest));
   window.scrollTo(0, 0);
 }
+/* o ponto verde de treino em andamento vive na aba de treino */
 function updateTrainingBadge(){
-  $('nav-home').classList.toggle('training', !!(session && session.startedAt));
+  $('nav-treinos').classList.toggle('training', !!(session && session.startedAt));
 }
 
 /* -------------------------------------------------------------------------
@@ -159,6 +164,16 @@ function suggestedKey(){
   const idx = PROGRAM.findIndex(w => w.key === last.key);
   return PROGRAM[(idx + 1) % PROGRAM.length].key;
 }
+/* O programa gerado já traz a contagem dentro do meta ("peito, costas · 6
+   exercícios"), o programa padrão não. Somar a contagem por fora duplicava
+   ela num caso e faltava no outro. Aqui a contagem antiga sai e entra a
+   atual, que respeita a edição de quem trocou exercício do dia. */
+function descricaoDoDia(w, n){
+  const base = String(w.meta || '').replace(/\s*·\s*\d+\s*exerc[íi]cios?\s*$/i, '').trim();
+  const conta = n + (n === 1 ? ' exercício' : ' exercícios');
+  return base ? base + ' · ' + conta : conta;
+}
+
 function renderHome(){
   const next = suggestedKey();
   $('daylist').innerHTML = PROGRAM.map(w => {
@@ -168,7 +183,7 @@ function renderHome(){
       '<span class="left">' +
         '<span class="tag">' + w.tag + (overrides[w.key] ? ' · personalizado' : '') + '</span>' +
         '<span class="name">' + w.name + '</span>' +
-        '<span class="meta">' + w.meta + ' · ' + n + ' exercícios</span>' +
+        '<span class="meta">' + esc(descricaoDoDia(w, n)) + '</span>' +
         '<span class="last">' + (last ? 'última vez ' + daysAgo(last.date) : 'ainda não registrado') + '</span>' +
       '</span><span class="arrow" aria-hidden="true">›</span></button>';
   }).join('') +
@@ -376,7 +391,7 @@ function renderProximoTreino(primeiraVez){
     '<button class="proxcard" data-open="' + key + '">' +
       '<span class="px-tag">' + esc(w.tag) + (primeiraVez ? ' · comece por aqui' : '') + '</span>' +
       '<span class="px-nome">' + esc(w.name) + '</span>' +
-      '<span class="px-meta">' + esc(w.meta) + ' · ' + n + ' exercícios</span>' +
+      '<span class="px-meta">' + esc(descricaoDoDia(w, n)) + '</span>' +
       '<span class="px-acao">' + (primeiraVez ? 'Começar meu primeiro treino' : 'Começar') + ' ›</span>' +
     '</button>';
 }
@@ -582,6 +597,10 @@ async function obterUsoArmazenamento(){
 /* Novidades da versão mais recente primeiro. Cada bump de VERSION que muda
    algo visível pra pessoa que usa o app ganha uma entrada nova aqui. */
 const NOVIDADES = [
+  {versao: 'meu-treino-v48', itens: [
+    'A navegação de baixo agora tem quatro abas: Início, Treinos, Histórico e Ajustes',
+    'Os dias do programa ganharam tela própria na aba Treinos'
+  ]},
   {versao: 'meu-treino-v47', itens: [
     'Corrige a tela inicial abrindo pela metade logo depois de uma atualização'
   ]},
@@ -857,6 +876,7 @@ $('resume-go').onclick = resumeSession;
 $('resume-drop').onclick = cancelWorkout;
 
 $('nav-home').onclick = () => { renderHome(); showScreen('home'); };
+$('nav-treinos').onclick = () => { renderHome(); showScreen('treinos'); };
 $('nav-history').onclick = () => { renderHistory(); showHistoryTab(historyTab); showScreen('history'); };
 $('tab-lista').onclick = () => showHistoryTab('lista');
 $('tab-evolucao').onclick = () => showHistoryTab('evolucao');
@@ -1095,7 +1115,7 @@ window.MT = {
   escolherAvatar: escolherAvatarArquivo, removerAvatar: removerAvatar,
   montarCartaoResumo: montarCartaoResumo, recordesDoTreino: recordesDoTreino,
   metricasDaHome: metricasDaHome, graficoDaHome: graficoDaHome, metricaSugerida: metricaSugerida,
-  FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS,
+  FRASES_BOAS_VINDAS: FRASES_BOAS_VINDAS, descricaoDoDia: descricaoDoDia,
   usarFoto: usarFotoNoCompartilhamento, removerFoto: removerFotoDoCompartilhamento,
   get _shareFile(){ return getShareFile(); },
   _pararTimers: pararTimers
